@@ -17,7 +17,11 @@ Spatial extent of dendritic arbor [Y/Z]
 Fraction of conatcts at that depth ? Number of contacts? 
 
 """
+
 MAX_CONTACT_AREA = 5.0
+
+BINS = np.linspace(65, 120, 14)
+
 @files("../preprocess/mouseretina/mouseretina.db", "features.pickle")
 def create_features(infile, outfile):
     """ 
@@ -39,7 +43,7 @@ def create_features(infile, outfile):
                                      conn, index_col='cell_id')
 
 
-    contacts_df = pandas.io.sql.read_frame("select * from contacts where area < %f" % MAX_CONTACT_AREA, 
+    contacts_df = pandas.io.sql.read_frame("select * from contacts where area < %f and area > %f" % (MAX_CONTACT_AREA, 1.0), 
                                            conn, index_col='id')
     
     # contacts sanity check, make sure there is only ONE way of representing cell A contacts cell B
@@ -61,16 +65,16 @@ def create_features(infile, outfile):
         return pandas.concat([gc, g2])
     contacts_df_sym = contacts_df.groupby('from_id', group_keys=False).apply(f)
 
-    bins = np.linspace(60, 130, 10)
+
     def feature_extract(group):
         od = {}
         od['contact_x_mean'] = group['x'].mean()
         od['contact_x_mean_area_weight'] = np.average(group['x'], 
                                                       weights=group['area'])
         od['contact_x_std'] = group['x'].std()
-        h, e = np.histogram(group['x'], bins)
+        h, e = np.histogram(group['x'], BINS)
         od['contact_x_hist'] = h
-        h, e = np.histogram(group['x'], bins, weights=group['area'])
+        h, e = np.histogram(group['x'], BINS, weights=group['area'])
         od['contact_area_hist'] = h
         od['contact_y_std'] = group['y'].std()
         od['contact_z_std'] = group['z'].std()
@@ -88,20 +92,22 @@ def create_features(infile, outfile):
 
     # now permute arbitarially
     a['cell_id'] = a.index.values
-    a.reindex(np.random.permutation(a.index))
+    a = a.reindex(np.random.permutation(a.index))
+    print a.head()
     # yes, we have some orphan cells with NO ONE connected to them
     print "There are", np.sum(a.index.values[np.isnan(a['contact_x_mean'])] ), "orphan cells"
     
     pickle.dump({'featuredf' : a}, 
                 open(outfile, 'w'))
 
-@files(create_features, "circos.png")
+@files(create_features, "features.png")
 def plot_features(infile, outfile):
     data = pickle.load(open(infile, 'r'))
     df = data['featuredf']
+    df = df[np.isfinite(df['contact_x_mean'])]
     cell_assignment = df['type_id']
 
-    circos_p = irm.plots.circos.CircosPlot(cell_assignment, 
+    circos_p = irm.plots.circos.CircosPlot(cell_assignment,
                                            ideogram_radius="0.5r",
                                            ideogram_thickness="10p")
 
@@ -110,6 +116,14 @@ def plot_features(infile, outfile):
     pos_r_min = 1.00
     pos_r_max = pos_r_min + 0.25
     ten_um_frac = 10.0/(pos_max - pos_min)
+
+    circos_p.add_plot('heatmap', {'r0' : '0.9r', 
+                                  'r1' : '1.0r', 
+                                  'stroke_thickness' : 0, 
+                                  'min' : 0, 
+                                  'max' : 72}, 
+                      df['type_id'])
+
 
     circos_p.add_plot('scatter', {'r0' : '%fr' % pos_r_min, 
                                   'r1' : '%fr' % pos_r_max, 
@@ -127,59 +141,73 @@ def plot_features(infile, outfile):
                        'axes': [('axis', {'color' : 'vgrey', 
                                           'thickness' : 1, 
                                           'spacing' : '%fr' % ten_um_frac})]})
-    circos_p.add_plot('scatter', {'r0': '1.28r',
-                                  'r1' : '1.50r', 
-                                  'glyph' : 'circle', 
-                                  'glyph_size' : 5, 
-                                  'color' : 'black', 
-                                  'stroke_thickness' : 0}, 
-                      df['contact_x_mean'], 
-                      {'backgrounds' : [('background', {'color': 'vvlgrey', 
-                                                        'y0' : 0, 
-                                                        'y1' : 100,})], 
-                       'axes': [('axis', {'color' : 'vgrey', 
-                                          'thickness' : 1, 
-                                          'spacing' : '%fr' % 0.1})]})
+    # circos_p.add_plot('scatter', {'r0': '1.28r',
+    #                               'r1' : '1.50r', 
+    #                               'glyph' : 'circle', 
+    #                               'glyph_size' : 5, 
+    #                               'color' : 'black', 
+    #                               'stroke_thickness' : 0}, 
+    #                   df['contact_x_mean'], 
+    #                   {'backgrounds' : [('background', {'color': 'vvlgrey', 
+    #                                                     'y0' : 0, 
+    #                                                     'y1' : 100,})], 
+    #                    'axes': [('axis', {'color' : 'vgrey', 
+    #                                       'thickness' : 1, 
+    #                                       'spacing' : '%fr' % 0.1})]})
 
-    circos_p.add_plot('scatter', {'r0': '1.28r',
-                                  'r1' : '1.50r', 
-                                  'glyph' : 'circle', 
-                                  'glyph_size' : 5, 
-                                  'color' : 'red', 
-                                  'stroke_thickness' : 0}, 
-                      df['contact_x_mean_area_weight'])
+    for bi, b in enumerate(BINS[:-1]):
+        width = 0.03
+        start = 1.25 + width*bi
+        end = start + width
+        r = [row['contact_area_hist'][bi] for (row_i, row) in df.iterrows()]
+        print r
+        circos_p.add_plot('heatmap', {'r0' : '%fr' % start, 
+                                      'r1' : '%fr' % end, 
+                                      'stroke_thickness' : 0}, 
+                          r)
+        
 
-    circos_p.add_plot('scatter', {'r0': '1.53r',
-                                  'r1' : '1.70r', 
-                                  'glyph' : 'circle', 
-                                  'glyph_size' : 5, 
-                                  'color' : 'black', 
-                                  'stroke_thickness' : 0}, 
-                      df['contact_x_std'], 
-                      {'backgrounds' : [('background', {'color': 'vvlblue', 
-                                                        'y0' : 0, 
-                                                        'y1' : 100,})], 
-                       'axes': [('axis', {'color' : 'vgrey', 
-                                          'thickness' : 1, 
-                                          'spacing' : '%fr' % 0.1})]})
+    # circos_p.add_plot('scatter', {'r0': '1.28r',
+    #                               'r1' : '1.50r', 
+    #                               'glyph' : 'circle', 
+    #                               'glyph_size' : 5, 
+    #                               'color' : 'red', 
+    #                               'stroke_thickness' : 0}, 
+    #                   df['contact_x_mean_area_weight'])
 
-    circos_p.add_plot('scatter', {'r0': '1.75r',
-                                  'r1' : '1.95r', 
-                                  'glyph' : 'circle', 
-                                  'glyph_size' : 5, 
-                                  'color' : 'black', 
-                                  'stroke_thickness' : 0}, 
-                      df['contact_spatial_std'], 
-                      {'backgrounds' : [('background', {'color': 'vvlred', 
-                                                        'y0' : 0, 
-                                                        'y1' : 100,})], 
-                       'axes': [('axis', {'color' : 'vgrey', 
-                                          'thickness' : 1, 
-                                          'spacing' : '%fr' % 0.1})]})
+    # circos_p.add_plot('scatter', {'r0': '1.53r',
+    #                               'r1' : '1.70r', 
+    #                               'glyph' : 'circle', 
+    #                               'glyph_size' : 5, 
+    #                               'color' : 'black', 
+    #                               'stroke_thickness' : 0}, 
+    #                   df['contact_x_std'], 
+    #                   {'backgrounds' : [('background', {'color': 'vvlblue', 
+    #                                                     'y0' : 0, 
+    #                                                     'y1' : 100,})], 
+    #                    'axes': [('axis', {'color' : 'vgrey', 
+    #                                       'thickness' : 1, 
+    #                                       'spacing' : '%fr' % 0.1})]})
 
+    # circos_p.add_plot('scatter', {'r0': '1.75r',
+    #                               'r1' : '1.95r', 
+    #                               'glyph' : 'circle', 
+    #                               'glyph_size' : 5, 
+    #                               'color' : 'black', 
+    #                               'stroke_thickness' : 0}, 
+    #                   df['contact_spatial_std'], 
+    #                   {'backgrounds' : [('background', {'color': 'vvlred', 
+    #                                                     'y0' : 0, 
+    #                                                     'y1' : 100,})], 
+    #                    'axes': [('axis', {'color' : 'vgrey', 
+    #                                       'thickness' : 1, 
+    #                                       'spacing' : '%fr' % 0.1})]})
+
+    
                                   
     irm.plots.circos.write(circos_p, outfile)
 
+if __name__ == "__main__":
         
-pipeline_run([create_features, plot_features])
+    pipeline_run([create_features, plot_features])
     

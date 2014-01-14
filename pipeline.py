@@ -3,6 +3,7 @@ from ruffus import *
 import cPickle as pickle
 import connattribio
 import irm
+import features
 
 def to_f32(x):
     a = np.array(x).astype(np.float32)
@@ -17,16 +18,20 @@ def run_inference(infile, outfile):
 
     N = len(df_vals)
 
-    desc = {'f_soma_x' : {'data' : to_f32(df_vals['soma_x']), 
+    desc = {'soma_x' : {'data' : to_f32(df_vals['soma_x']), 
                           'model' : 'NormalInverseChiSq'}, 
-            'f_contact_x_mean' : {'data' : to_f32(df_vals['contact_x_mean']),
-                                  'model' : 'NormalInverseChiSq'}, 
-            #'f_contact_x_std' : {'data' : to_f32(df_vals['contact_x_std']),
-            #                      'model' : 'NormalInverseChiSq'}, 
+            # 'contact_spatial_std' : {'data' : to_f32(df_vals['contact_spatial_std']),
+            #                          'model' : 'NormalInverseChiSq'}, 
     }
+    for i, bi in enumerate(features.BINS[:-1]):
+        a = np.array([row['contact_area_hist'][i] for row_i, row in df_vals.iterrows()], 
+                     dtype=np.float32)
+        print a
+        desc['contact_x_hist_%d' % i] =  {'data' : a, 
+                                          'model' : 'NormalInverseChiSq'}
 
     latent, data = connattribio.create_mm(desc)
-    latent['domains']['d1']['assignment'] = np.arange(N) % 10
+    latent['domains']['d1']['assignment'] = np.arange(N) % 40
 
     latent, data = irm.data.synth.prior_generate(latent, data)
     
@@ -36,10 +41,11 @@ def run_inference(infile, outfile):
     irm.irmio.set_model_latent(irm_model, latent, rng)
     
     kernel_config = irm.runner.default_kernel_anneal()
-    kernel_config[0][1]['subkernels'][-1][1]['grids']['NormalInverseChiSq'] = irm.gridgibbshps.default_grid_normal_inverse_chi_sq(mu_scale=100, var_scale=10)
+    kernel_config[0][1]['subkernels'][-1][1]['grids']['NormalInverseChiSq'] = irm.gridgibbshps.default_grid_normal_inverse_chi_sq(mu_scale=10, var_scale=1, GRIDN=10)
+    kernel_config[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = irm.gridgibbshps.default_grid_normal_inverse_chi_sq(mu_scale=10, var_scale=0.1, GRIDN=10)
     
 
-    MAX_ITERS = 200 
+    MAX_ITERS = 200
     for i in range(MAX_ITERS):
         irm.runner.do_inference(irm_model, rng, kernel_config, i)
 
@@ -50,8 +56,10 @@ def run_inference(infile, outfile):
         print "i=", i, "MAX_ITERS=", MAX_ITERS
     
     pickle.dump({'assignment' : a, 
-                 'latent' :new_latent}, 
+                 'latent' :new_latent,
+                 'data' : data}, 
                 open(outfile, 'w'))
+
 @files(run_inference, "results.png")
 def plot_results(infile, outfile):
 
@@ -64,7 +72,7 @@ def plot_results(infile, outfile):
 
 
 
-    circos_p = irm.plots.circos.CircosPlot(a, 
+    circos_p = irm.plots.circos.CircosPlot(a, #df['type_id'], 
                                            ideogram_radius="0.5r",
                                            ideogram_thickness="10p")
 
@@ -96,7 +104,7 @@ def plot_results(infile, outfile):
                                   'glyph_size' : 5, 
                                   'color' : 'black', 
                                   'stroke_thickness' : 0}, 
-                      df['contact_x_mean'], 
+                      df['contact_x_mean_area_weight'], 
                       {'backgrounds' : [('background', {'color': 'vvlgrey', 
                                                         'y0' : 0, 
                                                         'y1' : 100,})], 
@@ -104,13 +112,7 @@ def plot_results(infile, outfile):
                                           'thickness' : 1, 
                                           'spacing' : '%fr' % 0.1})]})
 
-    circos_p.add_plot('scatter', {'r0': '1.28r',
-                                  'r1' : '1.50r', 
-                                  'glyph' : 'circle', 
-                                  'glyph_size' : 5, 
-                                  'color' : 'red', 
-                                  'stroke_thickness' : 0}, 
-                      df['contact_x_mean_area_weight'])
+
 
     circos_p.add_plot('scatter', {'r0': '1.53r',
                                   'r1' : '1.70r', 
@@ -118,7 +120,7 @@ def plot_results(infile, outfile):
                                   'glyph_size' : 5, 
                                   'color' : 'black', 
                                   'stroke_thickness' : 0}, 
-                      df['contact_x_std'], 
+                      df['type_id'], 
                       {'backgrounds' : [('background', {'color': 'vvlblue', 
                                                         'y0' : 0, 
                                                         'y1' : 100,})], 
@@ -140,12 +142,23 @@ def plot_results(infile, outfile):
     #                                       'thickness' : 1, 
     #                                       'spacing' : '%fr' % 0.1})]})
 
-    circos_p.add_plot('heatmap', {'r0' : '1.75r', 
-                                  'r1' : '1.82r', 
-                                  'stroke_thickness' : 0}, 
+    circos_p.add_plot('heatmap', {'r0' : '0.9r', 
+                                  'r1' : '1.0r', 
+                                  'stroke_thickness' : 0, 
+                                  'min' : 0, 
+                                  'max' : 72}, 
                       df['type_id'])
 
-                                  
+    for bi, b in enumerate(features.BINS[:-1]):
+        width = 0.02
+        start = 1.75 + width*bi
+        end = start + width
+        r = [row['contact_area_hist'][bi] for (row_i, row) in df.iterrows()]
+        circos_p.add_plot('heatmap', {'r0' : '%fr' % start, 
+                                      'r1' : '%fr' % end, 
+                                      'stroke_thickness' : 0}, 
+                          r)
+
                                   
     irm.plots.circos.write(circos_p, outfile)
 
