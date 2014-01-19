@@ -6,7 +6,8 @@ import irm
 
 
 def test_mm():
-    
+    np.random.seed(0)
+
     import distributions
     N = 100
 
