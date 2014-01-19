@@ -20,7 +20,7 @@ Fraction of conatcts at that depth ? Number of contacts?
 
 MAX_CONTACT_AREA = 5.0
 
-BINS = np.linspace(65, 120, 14)
+BINS = np.linspace(65, 120, 10)
 
 @files("../preprocess/mouseretina/mouseretina.db", "features.pickle")
 def create_features(infile, outfile):

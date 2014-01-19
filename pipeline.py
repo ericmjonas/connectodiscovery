@@ -10,6 +10,24 @@ def to_f32(x):
     assert type(a) == np.ndarray
     return a
 
+def soma_x_hp_grid():
+    GRIDN = 10
+    mu = np.linspace(20, 150, GRIDN+1) 
+    sigmasq = irm.util.logspace(1.0, 5.0, GRIDN)
+    kappa = [0.1, 1.0, 10.0]
+    nu = irm.util.logspace(10.0, 50.0, GRIDN) 
+    
+    hps = []
+    for m in mu:
+        for s in sigmasq:
+            for k in kappa:
+                for n in nu:
+                    hps.append({'mu' : m, 
+                                'kappa' : k, 
+                                'sigmasq' : s, 
+                                'nu' : n})
+    return hps
+
 @files('features.pickle', "assignment.pickle")
 def run_inference(infile, outfile):
     data = pickle.load(open(infile, 'r'))
@@ -42,7 +60,7 @@ def run_inference(infile, outfile):
     
     kernel_config = irm.runner.default_kernel_anneal()
     kernel_config[0][1]['subkernels'][-1][1]['grids']['NormalInverseChiSq'] = irm.gridgibbshps.default_grid_normal_inverse_chi_sq(mu_scale=10, var_scale=1, GRIDN=10)
-    kernel_config[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = irm.gridgibbshps.default_grid_normal_inverse_chi_sq(mu_scale=10, var_scale=0.1, GRIDN=10)
+    kernel_config[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = soma_x_hp_grid()
     
 
     MAX_ITERS = 200
