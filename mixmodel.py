@@ -7,32 +7,39 @@ NOT_ASSIGNED = -1
 class Feature(object):
     def __init__(self, data, model):
         self.components = {}
+        self.assignments = {}
         self.mod = model
         self.data = data
-
+        
         self.hps = self.mod.create_hp()
 
     def add_entity_to_group(self, group_id, entity_pos):
         ss = self.components[group_id]
         self.mod.add_data(ss, self.data[entity_pos])
+        self.assignments[group_id].add(entity_pos)
 
     def remove_entity_from_group(self, group_id, entity_pos):
         ss = self.components[group_id]
         self.mod.remove_data(ss, self.data[entity_pos])
+        self.assignments[group_id].remove(entity_pos)
 
     def create_group(self, group_id, rng):
         self.components[group_id] = self.mod.create_ss()
-    
+        self.assignments[group_id] = set()
+
     def post_pred(self, group_id, entity_pos):
         ss = self.components[group_id]
         return self.mod.pred_prob(self.hps, ss, self.data[entity_pos])
-
+        
     def delete_group(self, group_id):
         del self.components[group_id]
+        del self.assignments[group_id]
 
     def data_prob(self, group_id):
         ss = self.components[group_id]
-        return self.mod.data_prob(self.hps, ss)
+        di = list(self.assignments[group_id])
+        return self.mod.data_prob(self.hps, ss, self.data[di])
+
 
 class MixtureModel(object):
     """

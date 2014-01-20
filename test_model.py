@@ -3,7 +3,7 @@ from nose.tools import *
 from matplotlib import pylab
 import model
 import irm
-
+import mixmodel
 
 def test_bins():
     bins = np.linspace(-20, 20, 100)
@@ -47,3 +47,32 @@ def test_compute_mm_probs():
     
 
 
+def test_mm_mixmodel():
+    np.random.seed(0)
+
+    import distributions
+    N = 100
+
+    data = np.zeros(N, dtype=np.float32)
+    MODEL = model.NonConjGaussian(0.5)
+
+    data[::2] = np.random.normal(-8, 0.5, N/2)
+    data[1::2] = np.random.normal(8, 0.5, N/2)
+    f = mixmodel.Feature(data, MODEL)
+
+    mm = mixmodel.MixtureModel(N, {'f1' : f})
+    
+    rng = None
+    # random init
+    grp = {}
+    for i, g in enumerate(np.random.permutation(np.arange(N) % 10)):
+        if g not in grp:
+            grp[g] = mm.create_group(rng)
+        mm.add_entity_to_group(grp[g], i)
+    print mm.score()
+
+    for i in range(1000):
+        irm.gibbs.gibbs_sample_type_nonconj(mm, 10, rng)
+        print mm.score()
+
+    assert_equal(irm.util.count(mm.get_assignments()).values(), [50, 50])

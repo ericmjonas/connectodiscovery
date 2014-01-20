@@ -3,7 +3,7 @@ from nose.tools import *
 from matplotlib import pylab
 import mixmodel
 import irm
-
+import gibbs
 
 def test_mm():
     np.random.seed(0)
@@ -30,7 +30,7 @@ def test_mm():
     print mm.score()
 
     for i in range(10):
-        irm.gibbs.gibbs_sample_type(mm, rng)
+        gibbs.gibbs_sample(mm, rng)
         print mm.score()
 
     assert_equal(irm.util.count(mm.get_assignments()).values(), [50, 50])
