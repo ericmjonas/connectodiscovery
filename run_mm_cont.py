@@ -6,22 +6,22 @@ import irm
 import gibbs
 
 # range is always [0, 1]
-# synth_comps = [[(1.0, 0.1, 0.1)], 
-#                [(1.0, 0.9, 0.1)]]
+synth_comps = [[(1.0, 0.1, 0.01)], 
+               [(1.0, 0.9, 0.01)]]
 
 np.random.seed(0)
 
 
-synth_comps = [[(0.5, 0.1, 0.01),
-                (0.5, 0.9, 0.01)], 
-               [(0.2, 0.4, 0.01), 
-                (0.8, 0.6, 0.01)]]
+# synth_comps = [[(0.5, 0.1, 0.01),
+#                 (0.5, 0.9, 0.01)], 
+#                [(0.2, 0.4, 0.01), 
+#                 (0.8, 0.6, 0.01)]]
 
 
 GROUP_N = len(synth_comps)
 
 # now generate the fake data 
-DP_N = 100
+DP_N = 10
 ENTITIES_PER_GROUP = 50
 ROW_N = ENTITIES_PER_GROUP * GROUP_N
 data = np.zeros((ROW_N, DP_N), dtype=np.float32)
@@ -38,8 +38,8 @@ for row_i, row in enumerate(data):
     
     x, _ = np.histogram(row, bins=BINS)
     hist_view[row_i] = x
-#pylab.imshow(hist_view, interpolation='nearest')
-#pylab.show()
+pylab.imshow(hist_view, interpolation='nearest')
+pylab.show()
 
     
 # now let's do some fucking inference
@@ -47,7 +47,7 @@ data = np.random.permutation(data)
 
 
 
-MODEL = model.MMDist(2, 0.02)
+MODEL = model.MMDist(1, 0.01)
 f = mixmodel.Feature(data, MODEL)
 
 mm = mixmodel.MixtureModel(ROW_N, {'f1' : f})
@@ -64,11 +64,11 @@ print mm.score()
 
 for i in range(100):
     gibbs.gibbs_sample_nonconj(mm, 20, rng)
-    # for group_id, comp in f.components.iteritems():
-    #     di = list(f.assignments[group_id])
+    for group_id, comp in f.components.iteritems():
+        di = list(f.assignments[group_id])
         
-    #     new_ss = model.mh_comp(MODEL, f.hps, comp, f.data[di])
-    #     f.components[group_id] = new_ss
+        new_ss = model.mh_comp(MODEL, f.hps, comp, f.data[di])
+        f.components[group_id] = new_ss
     
     print i, mm.score(), irm.util.count(mm.get_assignments()).values()
     

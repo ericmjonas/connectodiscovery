@@ -104,10 +104,10 @@ class BinnedDist(object):
     """
     """
     
-    def __init__(self, BIN_N, COMP_K, comp_std = 1.0):
+    def __init__(self, BIN_N, COMP_K, comp_var = 1.0):
         self.BIN_N = BIN_N
         self.COMP_K = COMP_K
-        self.comp_std = comp_std
+        self.comp_var = comp_var
         self.bins = np.linspace(0, 1.0, self.BIN_N+1)
 
     def create_hp(self):
@@ -124,7 +124,7 @@ class BinnedDist(object):
 
     def create_ss(self):
         ss = {'mu' : np.random.rand(self.COMP_K), 
-              'var' : np.ones(self.COMP_K)*self.comp_std**2, 
+              'var' : np.ones(self.COMP_K)*self.comp_var**2, 
               'pi' : np.random.dirichlet(np.ones(self.COMP_K))}
         return ss
 
@@ -146,9 +146,9 @@ class MMDist(object):
     """
     """
     
-    def __init__(self, COMP_K, comp_std = 1.0):
+    def __init__(self, COMP_K, comp_var = 1.0):
         self.COMP_K = COMP_K
-        self.comp_std = comp_std
+        self.comp_var = comp_var
 
     def create_hp(self):
         return None
@@ -160,7 +160,7 @@ class MMDist(object):
 
     def create_ss(self):
         ss = {'mu' : np.random.rand(self.COMP_K), 
-              'var' : np.ones(self.COMP_K)*self.comp_std**2, 
+              'var' : np.ones(self.COMP_K)*self.comp_var, 
               'pi' : np.random.dirichlet(np.ones(self.COMP_K))}
         return ss
 
