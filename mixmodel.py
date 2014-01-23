@@ -150,8 +150,8 @@ class MixtureModel(object):
         assigned_entity_N = self._assigned_entity_count()
 
         prior_score = irm.util.crp_post_pred(gc, assigned_entity_N+1, self.alpha)
-                    
-        return np.sum(scores) + prior_score/self.temp
+        #print np.sum(scores), prior_score, gc, assigned_entity_N, self.alpha
+        return np.sum(scores) + prior_score
 
     def score(self):
         score = self.get_prior_score()

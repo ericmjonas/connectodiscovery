@@ -33,7 +33,8 @@ def test_compute_mm_probs():
     pos_i = 0
     for pos, count in enumerate(i):
         samps[pos_i:pos_i+count] = np.random.normal(params[pos][1], 
-                                                   params[pos][2], size=count)
+                                                    np.sqrt(params[pos][2]), 
+                                                    size=count)
         pos_i += count
     samps = np.random.permutation(samps)
 
@@ -76,3 +77,43 @@ def test_mm_mixmodel():
         print mm.score()
 
     assert_equal(irm.util.count(mm.get_assignments()).values(), [50, 50])
+
+
+def test_data_prob_mm():
+    """
+    Testing this function is a challenge. Can we empirically calculate via 
+    forward-sampling the 2-d histogram and then analytically calculate for a bunch
+    of test points? 
+    
+    """
+    mu_vect = [-2.0, 0.0, 3.0]
+    sigmasq_vect = [1.0, 0.2, 0.4]
+    pi_vect = [0.25, 0.4, 0.35]
+    
+    params = zip(pi_vect, mu_vect, sigmasq_vect)
+    D = 1
+    N = 100000
+    data = np.zeros((N, D))
+    for n in range(N):
+        data[n] = model.sample_from_mm(D, params)
+
+    GRID_POINTS = 100
+    grid = np.linspace(-5, 5, GRID_POINTS)
+    grid.shape = (GRID_POINTS, 1)
+    scores = np.zeros(GRID_POINTS)
+    for g in range(GRID_POINTS):
+        scores[g] = model.data_prob_mm(np.array(grid[g]), 
+                                       mu_vect, sigmasq_vect, pi_vect)
+
+    print data.shape, grid.shape
+
+    h, _ = np.histogram(data[:, 0], bins=grid[:, 0])
+    h = h.astype(float) / np.sum(h)
+    print h
+    print data[:, 0]
+    print grid[:, 0]
+    grid_width = grid[1] - grid[0]
+    pylab.plot(grid, np.exp(scores), c='g')
+    pylab.plot(grid[:-1] + grid_width/2., h/grid_width)
+
+    pylab.show()

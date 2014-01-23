@@ -12,29 +12,34 @@ import gibbs
 np.random.seed(0)
 
 
-synth_comps = [[(0.5, 0.1, 0.05),
-                (0.5, 0.9, 0.05)], 
-               [(0.2, 0.4, 0.05), 
-                (0.8, 0.6, 0.05)]]
+synth_comps = [[(0.5, 0.1, 0.01),
+                (0.5, 0.9, 0.01)], 
+               [(0.2, 0.4, 0.01), 
+                (0.8, 0.6, 0.01)]]
 
 
 GROUP_N = len(synth_comps)
-BIN_N = 10
-BINS = np.linspace(0, 1.0, BIN_N + 1)
-BIN_WIDTH = BINS[1] - BINS[0]
 
 # now generate the fake data 
 DP_N = 100
 ENTITIES_PER_GROUP = 50
 ROW_N = ENTITIES_PER_GROUP * GROUP_N
-data = np.zeros((ROW_N, BIN_N), dtype=np.int32)
+data = np.zeros((ROW_N, DP_N), dtype=np.float32)
 
+BIN_N = 20
+BINS = np.linspace(0, 1.0, BIN_N + 1)
 # now generate the fake data:
 for ci, comp in enumerate(synth_comps):
-    p = model.compute_mm_probs(BINS, comp)
-    p = p / np.sum(p)
+    for ei in range(ENTITIES_PER_GROUP):
+        data[ci*ENTITIES_PER_GROUP + ei] = model.sample_from_mm(DP_N, comp)
 
-    data[ci*ENTITIES_PER_GROUP:(ci+1)*ENTITIES_PER_GROUP] = np.random.multinomial(DP_N, p, size=ENTITIES_PER_GROUP)
+hist_view = np.zeros((ROW_N, BIN_N))
+for row_i, row in enumerate(data):
+    
+    x, _ = np.histogram(row, bins=BINS)
+    hist_view[row_i] = x
+#pylab.imshow(hist_view, interpolation='nearest')
+#pylab.show()
 
     
 # now let's do some fucking inference
@@ -42,7 +47,7 @@ data = np.random.permutation(data)
 
 
 
-MODEL = model.BinnedDist(BIN_N, 2, 0.05)
+MODEL = model.MMDist(2, 0.02)
 f = mixmodel.Feature(data, MODEL)
 
 mm = mixmodel.MixtureModel(ROW_N, {'f1' : f})
@@ -59,22 +64,28 @@ print mm.score()
 
 for i in range(100):
     gibbs.gibbs_sample_nonconj(mm, 20, rng)
-    for group_id, comp in f.components.iteritems():
-        di = list(f.assignments[group_id])
+    # for group_id, comp in f.components.iteritems():
+    #     di = list(f.assignments[group_id])
         
-        new_ss = model.mh_comp(MODEL, f.hps, comp, f.data[di])
-        f.components[group_id] = new_ss
+    #     new_ss = model.mh_comp(MODEL, f.hps, comp, f.data[di])
+    #     f.components[group_id] = new_ss
     
     print i, mm.score(), irm.util.count(mm.get_assignments()).values()
     
+
+hist_view = np.zeros((ROW_N, BIN_N))
+for row_i, row in enumerate(data):
+    
+    x, _ = np.histogram(row, bins=BINS)
+    hist_view[row_i] = x
 
 a = mm.get_assignments()
 ai = np.argsort(a).flatten()
 fig = pylab.figure()
 ax = fig.add_subplot(1, 2, 1)
-ax.imshow(data, interpolation='nearest')
+ax.imshow(hist_view, interpolation='nearest')
 ax = fig.add_subplot(1, 2, 2)
-ax.imshow(data[ai], interpolation='nearest')
+ax.imshow(hist_view[ai], interpolation='nearest')
 for i in np.argwhere(np.diff(a[ai]) > 0).flatten():
     ax.axhline(i+0.5)
 
