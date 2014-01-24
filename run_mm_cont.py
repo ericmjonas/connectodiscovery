@@ -6,23 +6,29 @@ import irm
 import gibbs
 
 # range is always [0, 1]
-synth_comps = [[(1.0, 0.1, 0.01)], 
-               [(1.0, 0.9, 0.01)]]
+# synth_comps = [[(1.0, 0.1, 0.01)], 
+#                [(1.0, 0.9, 0.01)]]
 
 np.random.seed(0)
 
 
-# synth_comps = [[(0.5, 0.1, 0.01),
-#                 (0.5, 0.9, 0.01)], 
-#                [(0.2, 0.4, 0.01), 
-#                 (0.8, 0.6, 0.01)]]
+synth_comps = [[(0.5, 0.1, 0.01),
+                (0.5, 0.9, 0.1)], 
+               [(0.2, 0.4, 0.01), 
+                (0.8, 0.6, 0.01)], 
+               [(0.8, 0.4, 0.01), 
+                (0.2, 0.6, 0.01)], 
+               [(0.6, 0.4, 0.01), 
+                (0.2, 0.6, 0.01),
+                (0.2, 0.9, 0.001)], 
+           ]
 
 
 GROUP_N = len(synth_comps)
 
 # now generate the fake data 
-DP_N = 10
-ENTITIES_PER_GROUP = 50
+DP_N = 20
+ENTITIES_PER_GROUP = 200
 ROW_N = ENTITIES_PER_GROUP * GROUP_N
 data = np.zeros((ROW_N, DP_N), dtype=np.float32)
 
@@ -47,7 +53,7 @@ data = np.random.permutation(data)
 
 
 
-MODEL = model.MMDist(1, 0.01)
+MODEL = model.MMDist(4, 0.02)
 f = mixmodel.Feature(data, MODEL)
 
 mm = mixmodel.MixtureModel(ROW_N, {'f1' : f})

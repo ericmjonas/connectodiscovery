@@ -2,6 +2,9 @@ import numpy as np
 from scipy.special import erf, gammaln
 import irm
 import copy
+from matplotlib import pylab
+from scipy.stats import chi2, t, norm
+
 
 """
 Test mixture model of things-that-look-like-distributions
@@ -149,7 +152,7 @@ class MMDist(object):
     def __init__(self, COMP_K, comp_var = 1.0):
         self.COMP_K = COMP_K
         self.comp_var = comp_var
-
+        
     def create_hp(self):
         return None
 
@@ -160,15 +163,21 @@ class MMDist(object):
 
     def create_ss(self):
         ss = {'mu' : np.random.rand(self.COMP_K), 
-              'var' : np.ones(self.COMP_K)*self.comp_var, 
+              'var' : chi2.rvs(1, size=self.COMP_K)*self.comp_var, 
               'pi' : np.random.dirichlet(np.ones(self.COMP_K))}
+
+        # bins = np.linspace(-1, 2, 100)
+        # p = compute_mm_probs(bins,  zip(ss['pi'], ss['mu'], ss['var']))
+        # print ss['mu']
+        # pylab.plot(bins[:-1], p)
+        # pylab.show()
         return ss
 
     def pred_prob(self, hps, ss, val):
         """
         Val is a list of observations
         """
-        return data_prob_mm(val, ss['mu'], ss['var'], ss['pi']) # /len(val)
+        return data_prob_mm_fast(val, ss['mu'], ss['var'], ss['pi']) # /len(val)
         
 
         
@@ -240,7 +249,6 @@ def mh_comp(bd, hps, ss, data):
 
     return localss
 
-
 def data_prob_mm(data_vect, mu_vect, sigmasq_vect, pi_vect):
     """
     mixture model data probability
@@ -248,15 +256,37 @@ def data_prob_mm(data_vect, mu_vect, sigmasq_vect, pi_vect):
 
     N = len(data_vect)
     K = len(mu_vect)
-    tot_score = -1e100
+    tot_score = 0
+    for n in range(N):
+        score = -1e100
+        for k in range(K):
+            mu = mu_vect[k]
+            sigmasq = sigmasq_vect[k]
+            pi = pi_vect[k]
+            s = irm.util.log_norm_dens(data_vect[n], mu, sigmasq)
+            scores = np.sum(s) + np.log(pi)
+            score = np.logaddexp(score, scores)
+        tot_score += score
+    return tot_score
+
+def data_prob_mm_fast(data_vect, mu_vect, sigmasq_vect, pi_vect):
+    """
+    mixture model data probability
+    """
+
+    N = len(data_vect)
+    K = len(mu_vect)
+    tot_score = 0
+
+    dp_per_comp_scores = np.zeros((N, K), dtype=np.float32)
     for k in range(K):
         mu = mu_vect[k]
         sigmasq = sigmasq_vect[k]
         pi = pi_vect[k]
-        s = irm.util.log_norm_dens(data_vect, mu, sigmasq)
-        scores = np.sum(s) + np.log(pi)
-        tot_score = np.logaddexp(tot_score, scores)
-    return tot_score
+        dp_per_comp_scores[:, k] = irm.util.log_norm_dens(data_vect, mu, sigmasq)
+        dp_per_comp_scores[:, k] += np.log(pi)
 
-
-        
+    scores = dp_per_comp_scores[:, 0]
+    for k in range(1, K):
+        scores = np.logaddexp(scores, dp_per_comp_scores[:, k])
+    return np.sum(scores)

@@ -1,4 +1,6 @@
 import numpy as np
+from matplotlib import pylab
+import model
 
 # GIBBS SAMPLING
 def die_roll(v):
@@ -90,6 +92,30 @@ def gibbs_sample_nonconj(domain_inf, M, rng, impotent=False):
             # correct the score for the empty groups
             if group_id in extra_groups:
                 scores[gi] -= np.log(M)
+
+        # DEBUGGING
+        # normed_scores = scores_to_prob(scores)
+        # # top five 
+        # sorted_scores_i = np.argsort(normed_scores)[::-1]
+        # pylab.figure(figsize=(6, 12))
+        # pylab.subplot( 2, 1,  1)
+        # bins = np.linspace(-0.3, 1.3, 100)
+
+        # pylab.hist(domain_inf.features['f1'].data[entity_pos], 
+        #            bins)
+        # pylab.subplot( 2, 1,  2)
+
+        # sorted_scores_i = sorted_scores_i[:8]
+        # for si, s in enumerate(sorted_scores_i):
+        #     gid = groups[s]
+        #     ss = domain_inf.features['f1'].components[gid]
+        #     p = model.compute_mm_probs(bins,  zip(ss['pi'], ss['mu'], ss['var']))
+            
+        #     pylab.plot(bins[:-1], p, linewidth=3, 
+        #                alpha = (float(len(sorted_scores_i)) - si)/len(sorted_scores_i), 
+        #                c = 'k')
+
+        # pylab.show()
         #print entity_pos, scores
         sample_i = sample_from_scores(scores)
         if impotent: 
