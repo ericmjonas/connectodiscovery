@@ -261,7 +261,7 @@ def mh_comp(bd, hps, ss, data):
         pre_score = bd.data_prob(hps, localss, data)
         # mh the var
         old_var = ss['var'][comp_i]
-        new_var = np.random.normal(0, 0.1) + old_var
+        new_var = np.random.normal(0, 0.01) + old_var
         localss['var'][comp_i] = new_var
         post_score = bd.data_prob(hps, localss, data)
         

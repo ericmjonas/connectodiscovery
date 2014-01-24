@@ -20,19 +20,23 @@ synth_comps = [[(0.5, 0.1, 0.01),
                 (0.2, 0.6, 0.01)], 
                [(0.6, 0.4, 0.01), 
                 (0.2, 0.6, 0.01),
-                (0.2, 0.9, 0.001)], 
+                (0.2, 0.9, 0.001)],
+               [(0.25, 0.2, 0.001), 
+                (0.25, 0.4, 0.001),
+                (0.25, 0.6, 0.001),
+                (0.25, 0.8, 0.001)], 
            ]
 
 
 GROUP_N = len(synth_comps)
 
 # now generate the fake data 
-DP_N = 20
+DP_N = 100
 ENTITIES_PER_GROUP = 50
 ROW_N = ENTITIES_PER_GROUP * GROUP_N
 data = np.zeros((ROW_N, DP_N), dtype=np.float32)
 
-BIN_N = 20
+BIN_N = 100
 BINS = np.linspace(0, 1.0, BIN_N + 1)
 # now generate the fake data:
 for ci, comp in enumerate(synth_comps):
