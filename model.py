@@ -167,7 +167,7 @@ class MMDist(object):
     
     def __init__(self):
         self.CHI_VAL = 1.0
-        
+        self.EPSILON = 0.00001
     def create_hp(self):
         return {'comp_k' : 4, 
                 'dir_alpha' : 1.0, 
@@ -178,7 +178,7 @@ class MMDist(object):
         comp_k = hps['comp_k']
         
         mu = np.random.rand(comp_k) 
-        var = chi2.rvs(self.CHI_VAL, size=comp_k)*hps['var_scale']
+        var = chi2.rvs(self.CHI_VAL, size=comp_k)*hps['var_scale'] + self.EPSILON
         pi = np.random.dirichlet(np.ones(comp_k)*hps['dir_alpha'])
         
         return mu, var, pi
@@ -191,9 +191,11 @@ class MMDist(object):
     
     def score_prior(self, ss, hps):
         score = 0
-        epsilon = 0.001
+
         for mu, var in zip(ss['mu'], ss['var']):
-            if mu <= epsilon or mu >= (1-epsilon):
+            if mu <= self.EPSILON or mu >= (1-self.EPSILON):
+                return -np.inf
+            if (var / hps['var_scale']) < self.EPSILON:
                 return -np.inf
             score += np.log(chi2.pdf(var/hps['var_scale'], self.CHI_VAL))
         
@@ -247,9 +249,27 @@ def mh_comp(bd, hps, ss, data):
         
         a = np.exp(post_score - pre_score)
         #print "old mu=", old_mu, "proposed", new_mu, 
-        if np.random.rand() > a:
+        if (not np.isfinite(post_score)) or np.random.rand() > a:
             # reject
             localss['mu'][comp_i] = ss['mu'][comp_i]
+            #print "REJECTED a=", a
+        else:
+            #print "ACCEPTED a=", a 
+            pass
+
+    for comp_i in range(COMP_K):
+        pre_score = bd.data_prob(hps, localss, data)
+        # mh the var
+        old_var = ss['var'][comp_i]
+        new_var = np.random.normal(0, 0.1) + old_var
+        localss['var'][comp_i] = new_var
+        post_score = bd.data_prob(hps, localss, data)
+        
+        a = np.exp(post_score - pre_score)
+        #print "old var=", old_var, "proposed", new_var, 
+        if (not np.isfinite(post_score)) or  np.random.rand() > a:
+            # reject
+            localss['var'][comp_i] = ss['var'][comp_i]
             #print "REJECTED a=", a
         else:
             #print "ACCEPTED a=", a 
