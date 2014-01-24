@@ -28,7 +28,7 @@ GROUP_N = len(synth_comps)
 
 # now generate the fake data 
 DP_N = 20
-ENTITIES_PER_GROUP = 200
+ENTITIES_PER_GROUP = 50
 ROW_N = ENTITIES_PER_GROUP * GROUP_N
 data = np.zeros((ROW_N, DP_N), dtype=np.float32)
 
@@ -53,8 +53,11 @@ data = np.random.permutation(data)
 
 
 
-MODEL = model.MMDist(4, 0.02)
+MODEL = model.MMDist()
 f = mixmodel.Feature(data, MODEL)
+f.hps['comp_k'] = 4
+f.hps['dir_alpha'] = 1.0
+f.hps['var_scale'] = 0.1
 
 mm = mixmodel.MixtureModel(ROW_N, {'f1' : f})
 

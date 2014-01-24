@@ -24,7 +24,7 @@ class Feature(object):
         self.assignments[group_id].remove(entity_pos)
 
     def create_group(self, group_id, rng):
-        self.components[group_id] = self.mod.create_ss()
+        self.components[group_id] = self.mod.create_ss(self.hps, rng)
         self.assignments[group_id] = set()
 
     def post_pred(self, group_id, entity_pos):

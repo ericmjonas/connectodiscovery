@@ -72,6 +72,16 @@ def log_multinom_dens(x, p):
     Z = factorialln(np.sum(x)) - np.sum(gammaln(x + 1))
     return l + Z
 
+def log_dirichlet_dens(p, alphas):
+    score = 0.0
+    beta_alpha = 0.0
+    for i in range(len(p)):
+        score += (alphas[i] - 1.) * np.log(p[i])
+        beta_alpha += gammaln(alphas[i])
+    beta_alpha -= gammaln(np.sum(alphas))
+    score -= beta_alpha
+    return score
+                          
 
 class NonConjGaussian(object):
     """
@@ -147,31 +157,58 @@ class BinnedDist(object):
 
 class MMDist(object):
     """
+    We assume that the observations are mostly in the range 0, 1
+
+    Hypers: 
+    comp_k : Number of gaussians [parameter]
+    dir_alpha = alpha for the dirichlet prior on pi
+    var_scale = 0.1
     """
     
-    def __init__(self, COMP_K, comp_var = 1.0):
-        self.COMP_K = COMP_K
-        self.comp_var = comp_var
+    def __init__(self):
+        self.CHI_VAL = 1.0
         
     def create_hp(self):
-        return None
+        return {'comp_k' : 4, 
+                'dir_alpha' : 1.0, 
+                'var_scale' : 0.1}
 
+    def sample_from_prior(self, hps, rng):
+        # uniform distribution on mu
+        comp_k = hps['comp_k']
+        
+        mu = np.random.rand(comp_k) 
+        var = chi2.rvs(self.CHI_VAL, size=comp_k)*hps['var_scale']
+        pi = np.random.dirichlet(np.ones(comp_k)*hps['dir_alpha'])
+        
+        return mu, var, pi
+
+    def ss_sample_new(self, hps, rng):
+        mu, var, pi = self.sample_from_prior(hps, rng)
+        return {'mu' : mu, 
+                'var' : var, 
+                'pi' : pi}
+    
+    def score_prior(self, ss, hps):
+        score = 0
+        epsilon = 0.001
+        for mu, var in zip(ss['mu'], ss['var']):
+            if mu <= epsilon or mu >= (1-epsilon):
+                return -np.inf
+            score += np.log(chi2.pdf(var/hps['var_scale'], self.CHI_VAL))
+        
+        score += log_dirichlet_dens(ss['pi'], np.ones(hps['comp_k'])*hps['dir_alpha'])
+        return score
+        
     def add_data(self, ss, val):
         pass
+
     def remove_data(self, ss, val):
         pass
 
-    def create_ss(self):
-        ss = {'mu' : np.random.rand(self.COMP_K), 
-              'var' : chi2.rvs(1, size=self.COMP_K)*self.comp_var, 
-              'pi' : np.random.dirichlet(np.ones(self.COMP_K))}
+    def create_ss(self, hps, rng):
+        return self.ss_sample_new(hps, rng)
 
-        # bins = np.linspace(-1, 2, 100)
-        # p = compute_mm_probs(bins,  zip(ss['pi'], ss['mu'], ss['var']))
-        # print ss['mu']
-        # pylab.plot(bins[:-1], p)
-        # pylab.show()
-        return ss
 
     def pred_prob(self, hps, ss, val):
         """
@@ -181,12 +218,16 @@ class MMDist(object):
         
 
         
-    def data_prob(self, hps, ss, data):
+    def score_likelihood(self, hps, ss, data):
         score = 0.0 
         for val in data:
             score += self.pred_prob(hps, ss, val)
         return score
-
+    
+    def data_prob(self, hps, ss, data):
+        likelihood_score = self.score_likelihood(hps, ss, data)
+        prior_score = self.score_prior(ss, hps)
+        return likelihood_score + prior_score
 
 # mh the binned dist model
 def mh_comp(bd, hps, ss, data):
@@ -195,8 +236,8 @@ def mh_comp(bd, hps, ss, data):
     """
     
     localss = copy.deepcopy(ss)
-
-    for comp_i in range(bd.COMP_K):
+    COMP_K = hps['comp_k']
+    for comp_i in range(COMP_K):
         pre_score = bd.data_prob(hps, localss, data)
         # mh the mu
         old_mu = ss['mu'][comp_i]
