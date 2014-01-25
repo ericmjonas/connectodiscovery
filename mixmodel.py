@@ -37,8 +37,8 @@ class Feature(object):
 
     def data_prob(self, group_id):
         ss = self.components[group_id]
-        di = list(self.assignments[group_id])
-        return self.mod.data_prob(self.hps, ss, self.data[di])
+        ds = [self.data[i] for i in self.assignments[group_id]]
+        return self.mod.data_prob(self.hps, ss, ds)
 
 
 class MixtureModel(object):

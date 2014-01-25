@@ -20,7 +20,7 @@ Fraction of conatcts at that depth ? Number of contacts?
 
 MAX_CONTACT_AREA = 5.0
 
-BINS = np.linspace(65, 120, 10)
+BINS = np.linspace(65, 120, 40)
 
 @files("../preprocess/mouseretina/mouseretina.db", "features.pickle")
 def create_features(infile, outfile):
@@ -79,7 +79,7 @@ def create_features(infile, outfile):
         od['contact_y_std'] = group['y'].std()
         od['contact_z_std'] = group['z'].std()
         od['contact_spatial_std'] = np.sqrt(group['y'].var() + group['z'].var())
-
+        od['contact_x_list'] = group['x'].tolist()
         return pandas.Series(od)
 
     #results = []
