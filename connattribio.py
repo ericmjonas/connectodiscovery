@@ -1,5 +1,5 @@
 import numpy as np
-
+import irm
 
 """
 This is code that presents a mixture model interface
@@ -9,7 +9,8 @@ for testing and other stuff
 """
 MODEL_DTYPE = {'BetaBernoulli' : np.uint8, 
                'NormalInverseChiSq' : np.float32, 
-               'GammaPoisson' : np.uint32}
+               'GammaPoisson' : np.uint32, 
+               'MixtureModelDistribution' : irm.models.MixtureModelDistribution().data_dtype()}
 
 
 def create_mm(feature_desc):

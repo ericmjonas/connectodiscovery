@@ -231,6 +231,111 @@ class MMDist(object):
         prior_score = self.score_prior(ss, hps)
         return likelihood_score + prior_score
 
+
+class BinnedMMDist(object):
+    """
+    Just like the other one, but with binning. Let's see how this works! 
+
+    """
+    
+    def __init__(self):
+        self.CHI_VAL = 1.0
+        self.EPSILON = 0.00001
+        
+    def create_hp(self):
+        return {'comp_k' : 4, 
+                'dir_alpha' : 1.0, 
+                'var_scale' : 0.1, 
+                'bin_n' : 10}
+
+    def sample_from_prior(self, hps, rng):
+        # uniform distribution on mu
+        comp_k = hps['comp_k']
+        
+        mu = np.random.rand(comp_k) 
+        var = chi2.rvs(self.CHI_VAL, size=comp_k)*hps['var_scale'] + self.EPSILON
+        pi = np.random.dirichlet(np.ones(comp_k)*hps['dir_alpha'])
+        
+        return mu, var, pi
+
+    def ss_sample_new(self, hps, rng):
+        mu, var, pi = self.sample_from_prior(hps, rng)
+        return {'mu' : mu, 
+                'var' : var, 
+                'pi' : pi}
+    
+    def compute_score_vect(self, bin_n, mu_vect, sigmasq_vect, pi_vect):
+        bin_edges = np.arange(bin_n + 1, dtype=np.float32)/ (bin_n+1)
+        bin_centers = bin_edges[:-1] + 1./bin_n 
+        score_bins = np.zeros(bin_n)
+
+        # compute the prob for each bin
+        K = len(pi_vect)
+        dp_per_comp_scores = np.zeros((bin_n, K), dtype=np.float32)
+
+        for k in range(K):
+            mu = mu_vect[k]
+            sigmasq = sigmasq_vect[k]
+            pi = pi_vect[k]
+            dp_per_comp_scores[:, k] = irm.util.log_norm_dens(bin_centers, mu, sigmasq)
+            dp_per_comp_scores[:, k] += np.log(pi)
+
+        scores = dp_per_comp_scores[:, 0]
+        for k in range(1, K):
+            scores = np.logaddexp(scores, dp_per_comp_scores[:, k])
+
+        # normalize
+        score_total = scores[0]
+        for i in range(1, bin_n):
+            score_total = np.logaddexp(score_total, scores[i])
+        scores -= score_total
+
+        return scores
+    
+    def score_prior(self, ss, hps):
+        score = 0
+
+        for mu, var in zip(ss['mu'], ss['var']):
+            if mu <= self.EPSILON or mu >= (1-self.EPSILON):
+                return -np.inf
+            if (var / hps['var_scale']) < self.EPSILON:
+                return -np.inf
+            score += np.log(chi2.pdf(var/hps['var_scale'], self.CHI_VAL))
+        
+        score += log_dirichlet_dens(ss['pi'], np.ones(hps['comp_k'])*hps['dir_alpha'])
+        return score
+        
+    def add_data(self, ss, val):
+        pass
+
+    def remove_data(self, ss, val):
+        pass
+
+    def create_ss(self, hps, rng):
+        return self.ss_sample_new(hps, rng)
+
+
+    def pred_prob(self, hps, ss, val):
+        """
+        Val is a list of observations
+        """
+        s = self.compute_score_vect(hps['bin_n'], ss['mu'], 
+                                    ss['var'], ss['pi']) # /len(val)
+
+        return np.dot(val, s)
+
+        
+    def score_likelihood(self, hps, ss, data):
+        score = 0.0 
+        for val in data:
+            score += self.pred_prob(hps, ss, val)
+        return score
+    
+    def data_prob(self, hps, ss, data):
+        likelihood_score = self.score_likelihood(hps, ss, data)
+        prior_score = self.score_prior(ss, hps)
+        return likelihood_score + prior_score
+
 # mh the binned dist model
 def mh_comp(bd, hps, ss, data):
     """ 
@@ -314,7 +419,7 @@ def data_prob_mm(data_vect, mu_vect, sigmasq_vect, pi_vect):
     """
     mixture model data probability
     """
-
+    print "data_vec.shape=", data_vect.shape
     N = len(data_vect)
     K = len(mu_vect)
     tot_score = 0
@@ -325,7 +430,7 @@ def data_prob_mm(data_vect, mu_vect, sigmasq_vect, pi_vect):
             sigmasq = sigmasq_vect[k]
             pi = pi_vect[k]
             s = irm.util.log_norm_dens(data_vect[n], mu, sigmasq)
-            scores = np.sum(s) + np.log(pi)
+            scores = s + np.log(pi)
             score = np.logaddexp(score, scores)
         tot_score += score
     return tot_score

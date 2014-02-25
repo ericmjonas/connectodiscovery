@@ -21,15 +21,15 @@ def create_data():
                     (0.5, 0.9, 0.1)], 
                    [(0.2, 0.4, 0.01), 
                     (0.8, 0.6, 0.01)], 
-                   [(0.8, 0.4, 0.01), 
-                    (0.2, 0.6, 0.01)], 
-                   [(0.6, 0.4, 0.01), 
-                    (0.2, 0.6, 0.01),
-                    (0.2, 0.9, 0.001)],
-                   [(0.25, 0.2, 0.001), 
-                    (0.25, 0.4, 0.001),
-                    (0.25, 0.6, 0.001),
-                    (0.25, 0.8, 0.001)], 
+                   # [(0.8, 0.4, 0.01), 
+                   #  (0.2, 0.6, 0.01)], 
+                   # [(0.6, 0.4, 0.01), 
+                   #  (0.2, 0.6, 0.01),
+                   #  (0.2, 0.9, 0.001)],
+                   # [(0.25, 0.2, 0.001), 
+                   #  (0.25, 0.4, 0.001),
+                   #  (0.25, 0.6, 0.001),
+                   #  (0.25, 0.8, 0.001)], 
                ]
 
     def gen_synth_comps():
@@ -47,7 +47,7 @@ def create_data():
         return out
 
     synth_comps = gen_synth_comps()
-    print synth_comps
+    #print synth_comps
 
     GROUP_N = len(synth_comps)
 
@@ -61,7 +61,7 @@ def create_data():
     # now generate the fake data:
     for ci, comp in enumerate(synth_comps):
         for ei in range(ENTITIES_PER_GROUP):
-            dp_n = np.random.poisson(170)
+            dp_n = np.random.poisson(250)
 
             data.append(model.sample_from_mm(dp_n, comp))
             true_source.append(ci)
@@ -83,7 +83,7 @@ def load_data():
     data = featuredf['contact_x_list'].tolist()
     normed_data = []
     truth = []
-    for d, t in zip(data, featuredf['type_coarse'].tolist()):
+    for d, t in zip(data, featuredf['type_id'].tolist()):
         x = (np.array(d) - X_MIN)/(X_MAX-X_MIN)
         if type(x) != np.ndarray:
             x = np.array([x])
@@ -146,13 +146,21 @@ def run_exp(infile, outfile):
     true_source = np.array(true_source)
     true_source = true_source[order_permutation]
 
+    BIN_N = 20
+    # bin the data 
+    binned_data = []
+    for row in data:
+        binned_data.append(np.histogram(row, np.linspace(0, 1.0, BIN_N+1))[0])
+    data = binned_data
 
-    MODEL = model.MMDist()
+    MODEL = model.BinnedMMDist()
     f = mixmodel.Feature(data, MODEL)
-    f.hps['comp_k'] = 4
+    f.hps['comp_k'] = 2
     f.hps['dir_alpha'] = 1.0
-    f.hps['var_scale'] = 0.1
+    f.hps['var_scale'] = 0.04
+    f.hps['bin_n'] = BIN_N
 
+    
     mm = mixmodel.MixtureModel(ROW_N, {'f1' : f})
 
 
@@ -170,7 +178,7 @@ def run_exp(infile, outfile):
     scores = []
     assignments = []
 
-    for i in range(10):
+    for i in range(1000):
         gibbs.gibbs_sample_nonconj(mm, 20, rng)
         for group_id, comp in f.components.iteritems():
             #di = list(f.assignments[group_id])
@@ -191,8 +199,8 @@ def run_exp(infile, outfile):
                 open(outfile, 'w'))
 
 
-@files(run_exp, ['clusters.pdf', 'scores.pdf'])
-def plot_results(infile, (clusters_plot, scores_plot)):
+@files(run_exp, ['clusters.pdf', 'scores.pdf', 'truths.pdf'])
+def plot_results(infile, (clusters_plot, scores_plot, truth_plot)):
 
     r = pickle.load(open(infile, 'r'))
     data_file = r['data_file']
@@ -201,8 +209,8 @@ def plot_results(infile, (clusters_plot, scores_plot)):
 
     d = pickle.load(open(data_file, 'r'))
     data = d['data']
-    
-    
+    truth = np.array(d['truth'])
+
 
     BIN_N = 100
     BINS = np.linspace(0, 1.0, BIN_N + 1)
@@ -215,18 +223,31 @@ def plot_results(infile, (clusters_plot, scores_plot)):
         hist_view[row_i] = x
     # sort hist by original permutation
     hist_view = hist_view[r['order_permutation']]
+    truths = truth[r['order_permutation']]
+
     a = assignments[-1]
 
     ai = np.argsort(a).flatten()
     f = pylab.figure(figsize=(4, 12))
-    ax = f.add_subplot(1, 2, 1)
+    ax = f.add_subplot(1, 3, 1)
     ax.imshow(hist_view, interpolation='nearest')
-    ax = f.add_subplot(1, 2, 2)
+    ax = f.add_subplot(1, 3, 2)
+
     ax.imshow(hist_view[ai], interpolation='nearest')
     for i in np.argwhere(np.diff(a[ai]) > 0).flatten():
         ax.axhline(i+0.5, c='w')
 
+    ax = f.add_subplot(1, 3, 3)
+    ax.imshow(hist_view[np.argsort(truths).flatten()],
+              interpolation='nearest')
+    for i in np.argwhere(np.diff(np.sort(truths)) > 0).flatten():
+        ax.axhline(i + 0.5, c='w')
+
     f.savefig(clusters_plot)
+
+
+
+
     
     f = pylab.figure()
     ax = f.add_subplot(1, 1, 1)
@@ -234,6 +255,19 @@ def plot_results(infile, (clusters_plot, scores_plot)):
     ax.plot(scores)
     f.savefig(scores_plot)
 
+
+    
+    f = pylab.figure()
+    ax = f.add_subplot(1, 1, 1)
+    ax.scatter(range(len(truths)), truths[ai], 
+               edgecolor='none', s=1, c='k')
+    for i in np.argwhere(np.diff(a[ai]) > 0).flatten():
+        ax.axvline(i, c='k', alpha=0.5)
+    ax.set_xlim(0, 1000)
+    
+    f.savefig(truth_plot)
+    
+    
     # f2 = pylab.figure(figsize=(4, 8))
 
     # for ci, (group_id, ss) in enumerate(f.components.iteritems()):

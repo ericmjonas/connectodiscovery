@@ -18,3 +18,11 @@ Estimate runtime performance
 
 Add in connectivity
 
+
+
+Pipeline:
+
+1. select the data you want
+2. Construct the model, pick HP gridding
+3. Random init the data
+4. 
