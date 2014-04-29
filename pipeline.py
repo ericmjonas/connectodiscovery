@@ -93,6 +93,7 @@ def run_inference_cxl(infile, outfile):
     contact_x_list = np.zeros(N, dtype=irm.models.MixtureModelDistribution().data_dtype())
     
     for xi, x in enumerate(df_vals['contact_x_list']):
+        # in the event of > 1024 we randomly pick 1024
         y = np.array(x)
         x_min = features.BINS[0]
         x_max = features.BINS[-1]

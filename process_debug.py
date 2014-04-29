@@ -32,8 +32,9 @@ def to_f32(x):
     return a
 
 
+import cloud
 
-BUCKET_BASE="connattrib/mouseretina"
+BUCKET_BASE="connattrib/mouseretina_debug"
 RETINA_DB = "../preprocess/mouseretina/mouseretina.db"
 
 WORKING_DIR = "data"
@@ -42,14 +43,7 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 EXPERIMENTS = [
-    ('retina.0.ld.0.0.x', 'debug_2_100', 'debug_20'), 
-    ('retina.0.ld.0.0.xyz','debug_2_100', 'debug_20'), 
-    ('retina.0.ld.0.0.yz', 'debug_2_100', 'debug_20'), 
 
-
-
-    ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
-    #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
 ]
 
 
@@ -64,30 +58,12 @@ BB_BETAS = [1.0]
 VAR_SCALES = [0.1, 1.0]
 COMP_KS = [1, 2, 3]
 
-for ti in [1, 2,  3]: # remember to add 2 back in ! 
+for ti in range(len(THOLDS)):
     for v in range(len(VAR_SCALES)):
         for k in COMP_KS:
-            EXPERIMENTS.append(('retina.%d.clist.%d.%d' % (ti, v, k) , 
+            EXPERIMENTS.append(('retina.%d.clistdebug.%d.%d' % (ti, v, k) , 
                                 'fixed_20_100', 'anneal_slow_400'))
             pass
-
-for ti in range(len(THOLDS)):
-    for ml_i in range(len(MULAMBS)):
-        for pmax_i in range(len(PMAXS)):
-            for vars in ['x', 'yz', 'xyz']:
-                bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
-                EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
-
-
-for ti in [1, 2, 3]:
-    for ml_i in [3] : # range(len(MULAMBS)):
-        for pmax_i in range(len(PMAXS)):
-            for vars in ['xyz']:
-                for var_scale in range(len(VAR_SCALES)):
-                    for comp_k in COMP_KS:
-                        bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-                        EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
-                
 
             
 INIT_CONFIGS = {'fixed_20_100' : {'N' : 20, 
@@ -117,13 +93,12 @@ def generate_ld_hypers():
 
 
 slow_anneal[0][1]['subkernels'][-1][1]['grids']['LogisticDistance'] = generate_ld_hypers()
-slow_anneal[0][1]['subkernels'][-1][1]['grids']['MixtureModelDistribution'] = None
 
 
 def soma_x_hp_grid():
     GRIDN = 10
     mu = np.linspace(20, 120, GRIDN+1) 
-    sigmasq = irm.util.logspace(1.0, 2.0, GRIDN)
+    sigmasq = irm.util.logspace(1.0, 10.0, GRIDN)
     kappa = [0.1, 1.0]
     nu = irm.util.logspace(10.0, 50.0, GRIDN) 
     
@@ -138,7 +113,7 @@ def soma_x_hp_grid():
                                 'nu' : n})
     return hps
 
-slow_anneal[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = None  # soma_x_hp_grid()
+slow_anneal[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = soma_x_hp_grid()
 
 
 KERNEL_CONFIGS = {
@@ -148,8 +123,6 @@ KERNEL_CONFIGS = {
                   'kernels': irm.runner.default_kernel_anneal(1.0, 20)
               }
     }
-
-pickle.dump(slow_anneal, open("anneal_slow_400.config", 'w'))
 
 def create_tholds():
     """
@@ -180,81 +153,6 @@ def data_create_thold(dbname,
 
 
 
-def create_latents_srm_params():
-    for a in create_tholds():
-        inf = a[1][0]
-        for mli, mulamb in enumerate(MULAMBS):
-            for pi, p in enumerate(PMAXS):
-                for distvars in ['x', 'xyz', 'yz']:
-                    outf_base = inf[:-len('.data.pickle')]
-                    outf = "%s.ld.%d.%d.%s" % (outf_base, mli, pi, distvars)
-                    yield inf, [outf + '.data', 
-                                outf + '.latent', outf + '.meta'], distvars, mulamb, 0.01, p
-
-
-@follows(data_create_thold)
-@files(create_latents_srm_params)
-def create_latents_srm(infile, 
-                       (data_filename, latent_filename, meta_filename), 
-                       distvars, mulamb, p_min, p_max):
-
-
-    irm_latent, irm_data = models.create_conn_dist(infile, distvars)
-
-    HPS = {'mu_hp' : mulamb,
-           'lambda_hp' : mulamb,
-           'p_min' : p_min, 
-           'p_max' : p_max}
-
-    irm_latent['relations']['R1']['hps'] = HPS
-
-    pickle.dump(irm_latent, open(latent_filename, 'w'))
-    pickle.dump(irm_data, open(data_filename, 'w'))
-    pickle.dump({'infile' : infile, 
-                 }, open(meta_filename, 'w'))
-
-
-
-def create_latents_xsoma_params():
-    for a in create_tholds():
-        inf = a[1][0]
-
-        outf = td("retina.xsoma")
-        yield inf, [outf + '.data', 
-                    outf + '.latent', outf + '.meta']
-        return # only one of these
-
-
-@follows(data_create_thold)
-@files(create_latents_xsoma_params)
-def create_latents_xsoma(infile, 
-                         (data_filename, latent_filename, meta_filename)):
-    """
-    Just the soma x-positions
-    """
-    d = pickle.load(open(infile, 'r'))
-    cells =  d['cells']
-
-
-    feature_desc = {'soma_x' : {'data' : to_f32(cells['x']), 
-                                'model' : 'NormalInverseChiSq'}, 
-    }
-
-    # FIXME do we have to set the initial hypers? 
-
-    latent, data = connattribio.create_mm(feature_desc)
-    HPS = {'kappa' : 0.0001, 
-           'mu' : 50.0, 
-           'sigmasq' : 0.1, 
-           'nu' : 10.0}
-
-    latent['relations']['r_soma_x']['hps'] = HPS
-
-    pickle.dump(latent, open(latent_filename, 'w'))
-    pickle.dump(data, open(data_filename, 'w'))
-    pickle.dump({'infile' : infile, 
-                 }, open(meta_filename, 'w'))
-
 
 
 def create_latents_clist_params():
@@ -264,7 +162,7 @@ def create_latents_clist_params():
             for cki, comp_k in enumerate(COMP_KS):
 
                 outf_base = inf[:-len('.data.pickle')]
-                outf = "%s.clist.%d.%d" % (outf_base, vsi, comp_k)
+                outf = "%s.clistdebug.%d.%d" % (outf_base, vsi, comp_k)
                 yield inf, [outf + '.data', 
                             outf + '.latent', outf + '.meta'], vs, comp_k
 
@@ -298,78 +196,6 @@ def create_latents_clist(infile,
     pickle.dump({'infile' : infile, 
                  }, open(meta_filename, 'w'))
 
-def create_latents_srm_clist_xsoma_params():
-    for a in create_tholds():
-        inf = a[1][0]
-        outf_base = inf[:-len('.data.pickle')]
-        for ml_i in range(len(MULAMBS)):
-            for pmax_i in range(len(PMAXS)):
-                for vars in ['xyz']: # FXIME only doing one of these right now
-                    for var_scale in range(len(VAR_SCALES)):
-                        for comp_k in COMP_KS:
-
-                            outf = '%s.srm_clist_xsoma.%d.%d.%s.%d.%d' % (outf_base, 
-                                                                 ml_i, pmax_i, vars, 
-                                                                 var_scale, comp_k)
-
-                            yield inf, [outf + '.data', 
-                                        outf + '.latent', outf + '.meta'], vars, MULAMBS[ml_i], PMAXS[pmax_i], VAR_SCALES[var_scale], comp_k
-
-
-@follows(data_create_thold)
-@files(create_latents_srm_clist_xsoma_params)
-def create_latents_srm_clist_xsoma(infile, 
-                                  (data_filename, latent_filename, meta_filename), 
-                                  distvars, mulamb, p_max, 
-                                  var_scale, COMP_K):
-
-    d = pickle.load(open(infile, 'r'))
-    cells =  d['cells']
-    
-    graph_latent, graph_data = models.create_conn_dist(infile, distvars)
-    assert mulamb > 0 
-    HPS = {'mu_hp' : mulamb,
-           'lambda_hp' : mulamb,
-           'p_min' : 0.01, 
-           'p_max' : p_max}
-
-    graph_latent['relations']['R1']['hps'] = HPS
-
-
-
-    contact_x_list = models.create_mixmodeldata(cells['contact_x_list'], 
-                                                20, 120)
-    feature_desc = {
-        'contact_x_list' : {'data' : contact_x_list,
-                            'model' : 'MixtureModelDistribution'}, 
-        'soma_x' : {'data' : to_f32(cells['x']), 
-                                'model' : 'NormalInverseChiSq'}, 
-    }
-
-
-    feature_latent, feature_data = connattribio.create_mm(feature_desc)
-    feature_latent['relations']['r_contact_x_list']['hps'] = {'comp_k': COMP_K, 
-                                                              'var_scale' : var_scale, 
-                                                              'dir_alpha' : 1.0}
-
-    soma_x_HPS = {'kappa' : 0.0001, 
-                  'mu' : 50.0, 
-                  'sigmasq' : 0.1, 
-                  'nu' : 10.0}
-
-    latent['relations']['r_soma_x']['hps'] = HPS
-
-    feature_latent['relations']['r_soma_x']['hps'] = soma_x_HPS
-
-    latent, data = models.merge_graph_features(graph_latent, graph_data, 
-                                feature_latent, feature_data, 
-                                'd1')
-
-
-    pickle.dump(latent, open(latent_filename, 'w'))
-    pickle.dump(data, open(data_filename, 'w'))
-    pickle.dump({'infile' : infile, 
-                 }, open(meta_filename, 'w'))
 
 
 def get_dataset(data_name):
@@ -383,10 +209,7 @@ def init_generator():
 
 
             
-@follows(create_latents_srm)
 @follows(create_latents_clist)
-@follows(create_latents_xsoma)
-@follows(create_latents_srm_clist_xsoma)
 @files(init_generator)
 def create_inits(data_filename, out_filenames, init_config_name, init_config):
     basename, _ = os.path.splitext(data_filename)
@@ -559,8 +382,8 @@ def plot_hypers(exp_results, (plot_hypers_filename,)):
 
     
     chains = [c for c in chains if type(c['scores']) != int]
-    if "clist" not in plot_hypers_filename:
-        irm.experiments.plot_chains_hypers(f, chains, data)
+
+    irm.experiments.plot_chains_hypers(f, chains, data)
 
     f.savefig(plot_hypers_filename)
 
@@ -607,7 +430,7 @@ def plot_hypers(exp_results, (plot_hypers_filename,)):
     
 #     f.savefig(plot_params_filename)
 
-CIRCOS_DIST_THRESHOLDS = [50]
+CIRCOS_DIST_THRESHOLDS = [10]
 
 @transform(get_results, suffix(".samples"), 
            [(".circos.%02d.png" % d, 
@@ -689,8 +512,8 @@ def plot_circos_latent(exp_results,
             custom_color_map['true_coarse_%s' % n] = v
 
         circos_p = irm.plots.circos.CircosPlot(cell_assignment, 
-                                               ideogram_radius="0.5r",
-                                               ideogram_thickness="30p", 
+                                               ideogram_radius="0.7r",
+                                               ideogram_thickness="50p", 
                                                karyotype_colors = color_str, 
                                                custom_color_map = custom_color_map)
 
@@ -699,137 +522,105 @@ def plot_circos_latent(exp_results,
                                                sample_latent['relations']['R1']['ss'], 
                                                sample_latent['relations']['R1']['hps'], 
                                                model_name)
-            thold = 0.60 
+            thold = 0.50 
             ribbons = []
             links = []
             for (src, dest), p in v.iteritems():
                 if p > thold:
-                    ribbons.append((src, dest, int(30*p)))
+                    ribbons.append((src, dest, int(40*p)))
             circos_p.set_class_ribbons(ribbons)
+            pos_min = 40
+            pos_max = 120
+            pos_r_min = 1.00
+            pos_r_max = pos_r_min + 0.25
+            ten_um_frac = 10.0/(pos_max - pos_min)
 
-        pos_min = 40
-        pos_max = 120
-        pos_r_min = 1.00
-        pos_r_max = pos_r_min + 0.3
-        ten_um_frac = 10.0/(pos_max - pos_min)
+            circos_p.add_plot('scatter', {'r0' : '%fr' % pos_r_min, 
+                                          'r1' : '%fr' % pos_r_max, 
+                                          'min' : pos_min, 
+                                          'max' : pos_max, 
+                                          'glyph' : 'circle', 
+                                          'glyph_size' : 10, 
+                                          'color' : 'black',
+                                          'stroke_thickness' : 0
+                                          }, 
+                              cells['x'], 
+                              {'backgrounds' : [('background', {'color': 'vvlgrey', 
+                                                                'y0' : pos_min, 
+                                                                'y1' : pos_max})],  
+                               'axes': [('axis', {'color' : 'vgrey', 
+                                                  'thickness' : 1, 
+                                                  'spacing' : '%fr' % ten_um_frac})]})
+            
+            # circos_p.add_plot('heatmap', {'r0' : '1.34r', 
+            #                                 'r1' : '1.37r', 
+            #                                 'min' : 0, 
+            #                                 'max' : 72, 
+            #                               'stroke_thickness' : 0, 
+            #                               'color' : ",".join(true_color_list) }, 
+            #                   cell_types)
 
-        circos_p.add_plot('scatter', {'r0' : '%fr' % pos_r_min, 
-                                      'r1' : '%fr' % pos_r_max, 
-                                      'min' : pos_min, 
-                                      'max' : pos_max, 
-                                      'glyph' : 'circle', 
-                                      'glyph_size' : 8, 
-                                      'color' : 'black',
-                                      'stroke_thickness' : 0
-                                      }, 
-                          cells['x'], 
-                          {'backgrounds' : [('background', {'color': 'vvlgrey', 
-                                                            'y0' : pos_min, 
-                                                            'y1' : pos_max})],  
-                           'axes': [('axis', {'color' : 'vgrey', 
-                                              'thickness' : 1, 
-                                              'spacing' : '%fr' % ten_um_frac})]})
-
-        # circos_p.add_plot('heatmap', {'r0' : '1.34r', 
-        #                                 'r1' : '1.37r', 
-        #                                 'min' : 0, 
-        #                                 'max' : 72, 
-        #                               'stroke_thickness' : 0, 
-        #                               'color' : ",".join(true_color_list) }, 
-        #                   cell_types)
-        
-        types_sparse = np.array(cells['type_id'], dtype=np.float32)
-        types_sparse[types_sparse <72] = np.nan
- 
-        circos_p.add_plot('scatter', {'r0' : '1.8r', 
-                                      'r1' : '1.9r', 
-                                      'min' : 70, 
-                                      'max' : 78, 
-                                      'gliph' : 'circle', 
-                                      'color' : 'black', 
-                                      'stroke_thickness' : 0}, 
-                          types_sparse, 
-                          {'backgrounds' : [('background', {'color': 'vvlblue', 
-                                                            'y0' : 70, 
-                                                            'y1' : 78})],  
-                           'axes': [('axis', {'color' : 'vgrey', 
-                                              'thickness' : 1, 
-                                              'spacing' : '%fr' % (0.1)})]})
-
-        
-        # circos_p.add_plot('heatmap', {'r0' : '1.7r', 
-        #                              'r1' : '1.8r'}, 
-        #                  cells['coarse'])
-
-        # always plot the cell depth
-        # compute cell depth histograms per-row
-
-        X_HIST_BINS = np.linspace(60, 120, 20)
-        hists = np.zeros((len(cells), len(X_HIST_BINS)-1))
-        for cell_i, (cell_id, cell) in enumerate(cells.iterrows()):
-            h, e = np.histogram(cell['contact_x_list'], X_HIST_BINS)
-            hists[cell_i] = h
-
-        for bi, b in enumerate(X_HIST_BINS[:-1]):
-            width = 0.4/20.
-            start = 1.3 + width*bi
-            end = start + width
-            circos_p.add_plot('heatmap', {'r0' : '%fr' % start, 
-                                          'r1' : '%fr' % end, 
-                                          'stroke_thickness' : 0, 
-                                          'color' : 'greys-6-seq'}, 
-                              hists[:, bi])
+            circos_p.add_plot('scatter', {'r0' : '1.26r', 
+                                          'r1' : '1.40r', 
+                                          'min' : 0, 
+                                          'max' : 80, 
+                                          'gliph' : 'circle', 
+                                          'color' : 'black', 
+                                          'stroke_thickness' : 0}, 
+                              cells['type_id'], 
+                              {'backgrounds' : [('background', {'color': 'vvlblue', 
+                                                                'y0' : 0, 
+                                                                'y1' : 80})],  
+                               'axes': [('axis', {'color' : 'vgrey', 
+                                                  'thickness' : 1, 
+                                                  'spacing' : '%fr' % (10/80.)})]})
+                            
+                                            
 
 
-        # f_color_legend = pylab.figure()
-        # ax_color_legend = f_color_legend.add_subplot(1, 1, 1)
+            # f_color_legend = pylab.figure()
+            # ax_color_legend = f_color_legend.add_subplot(1, 1, 1)
 
-        # x = np.zeros((TYPE_N, 20))
-        # for i in range(10):
-        #     x[:, i] = np.arange(TYPE_N)
-        # for n in ['gc', 'nac', 'mwac', 'bc', 'other']:
-        #     print gc_min_i
-        #     x[gc_min_i.ix[n]:gc_max_i.ix[n]+1, 10:] = gc_mean_i.ix[n]
-        #     ax_color_legend.plot([10, 20], [gc_max_i.ix[n], gc_max_i.ix[n]])
-        # ax_color_legend.imshow(x, cmap=TGT_CMAP, interpolation='nearest')
-        # ax_color_legend.axvline(10, c='k')
-        # ax_color_legend.set_xticks([])
-        # f_color_legend.savefig(color_legend_filename)
-        print "TYPE_N=", TYPE_N
-        type_color_map = {'gc' : 0, 
-                          'nac' : 1, 
-                          'mwac' : 2, 
-                          'bc' : 3, 
-                          'other' : 4, 
-                          None : 4}
+            # x = np.zeros((TYPE_N, 20))
+            # for i in range(10):
+            #     x[:, i] = np.arange(TYPE_N)
+            # for n in ['gc', 'nac', 'mwac', 'bc', 'other']:
+            #     print gc_min_i
+            #     x[gc_min_i.ix[n]:gc_max_i.ix[n]+1, 10:] = gc_mean_i.ix[n]
+            #     ax_color_legend.plot([10, 20], [gc_max_i.ix[n], gc_max_i.ix[n]])
+            # ax_color_legend.imshow(x, cmap=TGT_CMAP, interpolation='nearest')
+            # ax_color_legend.axvline(10, c='k')
+            # ax_color_legend.set_xticks([])
+            # f_color_legend.savefig(color_legend_filename)
+            print "TYPE_N=", TYPE_N
+            type_color_map = {'gc' : 0, 
+                              'nac' : 1, 
+                              'mwac' : 2, 
+                              'bc' : 3, 
+                              'other' : 4}
 
-        # pick colors
-        colors = ['true_coarse_%s' % s for s in ['gc', 'nac', 'mwac', 'bc', 'other']]
+            # pick colors
+            colors = ['true_coarse_%s' % s for s in ['gc', 'nac', 'mwac', 'bc', 'other']]
+                      
+            # circos_p.add_plot('heatmap', {'r0' : '1.28r', 
+            #                               'r1' : '1.34r', 
+            #                               'min' : 0, 
+            #                               'max' : 4, 
+            #                               'stroke_thickness' :0,
+            #                               'color': ",".join(colors)}, 
+            #                   [type_color_map[df2.ix[i]['des']] for i in cell_types])
+            
+            # circos_p.add_plot('scatter', {'r0' : '1.01r', 
+            #                               'r1' : '1.10r', 
+            #                               'min' : 0, 
+            #                               'max' : 3, 
+            #                               'gliph' : 'square', 
+            #                               'color' : 'black', 
+            #                               'stroke_thickness' : 0}, 
+            #                   [type_lut[i] for i in cell_types])
 
-        print cells['coarse']
-        circos_p.add_plot('heatmap', {'r0' : '1.7r', 
-                                      'r1' : '1.8r', 
-                                      'min' : 0, 
-                                      'max' : 4, 
-                                      'stroke_thickness' :0,
-                                      'color': ",".join(colors)}, 
-                          [type_color_map[c] for c in cells['coarse']])
-        circos_p.add_plot('text', {'r0' : '1.9r', 
-                                   'r1' : '2.0r', 
-                                   'label_size' : '7p'}, 
-                          cells['type_id'])
-
-        # circos_p.add_plot('scatter', {'r0' : '1.01r', 
-        #                               'r1' : '1.10r', 
-        #                               'min' : 0, 
-        #                               'max' : 3, 
-        #                               'gliph' : 'square', 
-        #                               'color' : 'black', 
-        #                               'stroke_thickness' : 0}, 
-        #                   [type_lut[i] for i in cell_types])
-
-
-
+                            
+                                            
         irm.plots.circos.write(circos_p, circos_filename_main)
         
         circos_p = irm.plots.circos.CircosPlot(cell_assignment, ideogram_radius="0.5r", 
@@ -847,7 +638,7 @@ def plot_circos_latent(exp_results,
             links = []
             for (src, dest), p in v.iteritems():
                 if p > thold:
-                    ribbons.append((src, dest, int(30*p)))
+                    ribbons.append((src, dest, int(40*p)))
             circos_p.set_class_ribbons(ribbons)
                                             
         irm.plots.circos.write(circos_p, circos_filename_small)
@@ -1066,116 +857,157 @@ def plot_circos_latent(exp_results,
 #     f.savefig(out_filename)
 
 
-@transform(get_results, suffix(".samples"), 
-           ".cluster_metrics.pickle" )
-def compute_cluster_metrics(exp_results, 
-                      out_filename):
+# @transform(get_results, suffix(".samples"), 
+#            ".cluster_metrics.pickle" )
+# def compute_cluster_metrics(exp_results, 
+#                       out_filename):
 
-    sample_d = pickle.load(open(exp_results))
-    chains = sample_d['chains']
+#     sample_d = pickle.load(open(exp_results))
+#     chains = sample_d['chains']
     
-    exp = sample_d['exp']
-    data_filename = exp['data_filename']
-    data = pickle.load(open(data_filename))
-    data_basename, _ = os.path.splitext(data_filename)
-    meta = pickle.load(open(data_basename + ".meta"))
+#     exp = sample_d['exp']
+#     data_filename = exp['data_filename']
+#     data = pickle.load(open(data_filename))
+#     data_basename, _ = os.path.splitext(data_filename)
+#     meta = pickle.load(open(data_basename + ".meta"))
 
-    meta_infile = meta['infile']
-    print "meta_infile=", meta_infile
+#     meta_infile = meta['infile']
+#     print "meta_infile=", meta_infile
 
-    d = pickle.load(open(meta_infile, 'r'))
-    conn = d['conn_mat']
-    cells = d['cells']
-
+#     d = pickle.load(open(meta_infile, 'r'))
+#     conn = d['dist_matrix']['link']
+#     cell_id_permutation = d['cell_id_permutation']
     
-    chains = [c for c in chains if type(c['scores']) != int]
-    all_chains = []
-    for chain_i, chain in enumerate(chains):
+#     dist_matrix = d['dist_matrix']
+#     orig_data = pickle.load(open(d['infile']))
+#     cell_types = d['types'][:len(conn)]
+    
+#     type_metadata_df = pickle.load(open("type_metadata.pickle", 'r'))['type_metadata']
 
-        sample_latent = chain['state']
-        cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
-        ca = irm.util.canonicalize_assignment(cell_assignment)
+#     chains = [c for c in chains if type(c['scores']) != int]
+#     CHAINN = len(chains)
 
-        cells['cluster'] = ca
+#     chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
+#     chain_pos = 0
 
-        canon_true_fine = irm.util.canonicalize_assignment(cells['type_id'])
-        canon_true_coarse = irm.util.canonicalize_assignment(cells['coarse'])
+#     best_chain_i = chains_sorted_order[chain_pos]
+#     best_chain = chains[best_chain_i]
+#     sample_latent = best_chain['state']
+#     cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
 
+#     # this is potentially fun: get the ranges for each type
+#     TYPE_N = np.max(cell_types) + 1
 
+#     df2 = pandas.DataFrame(index=np.arange(1, TYPE_N))
+#     df2['des'] = type_metadata_df['coarse']
+#     df2 = df2.fillna('other')
+#     df2['id'] = df2.index.values.astype(int)
+#     gc_mean_i = df2.groupby('des').mean().astype(int)
+#     gc_min_i = df2.groupby('des').min().astype(int)
+#     gc_max_i = df2.groupby('des').max().astype(int)
 
-        ari = metrics.adjusted_rand_score(canon_true_fine, ca)
-        ari_coarse = metrics.adjusted_rand_score(canon_true_coarse, ca)
-
-        ami = metrics.adjusted_mutual_info_score(canon_true_fine, ca)
-        ami_coarse = metrics.adjusted_mutual_info_score(canon_true_coarse, ca)
-
-
-        jaccard = rand.compute_jaccard(canon_true_fine, ca)
-        jaccard_coarse = rand.compute_jaccard(canon_true_coarse, ca)
-
-        ss = rand.compute_similarity_stats(canon_true_fine, ca)
-
-        # other statistics 
-
-        # cluster count
-
-        # average variance x
-        vars = cells.groupby('cluster').var()
-        # average variance y
-        # average variance z
-
-        chain_info = {'ari' : ari, 
-                     'ari_coarse' : ari_coarse, 
-                     'ami' : ami, 
-                     'ami_coarse' : ami_coarse, 
-                     'jaccard' : jaccard, 
-                     'jaccard_coarse' : jaccard_coarse,
-                     'n11' : ss['n11'], 
-                     'vars' : vars, 
-                      'cluster_n' : len(np.unique(cells['cluster'])),
-                      'chain_i' : chain_i, 
-                      'score' : chain['scores'][-1],
-                      'df' : cells, 
-                      'filename' : exp_results,
-                     }
-        all_chains.append(chain_info)
-    df = pandas.DataFrame(all_chains)
-    pickle.dump(df, open(out_filename, 'w'))
+#     soma_positions = pickle.load(open('soma.positions.pickle', 'r'))
+#     pos_vec = soma_positions['pos_vec'][cell_id_permutation]
 
 
-@merge(compute_cluster_metrics, ("cluster_metrics.pickle", 'cluster.metrics.html'))
-def merge_cluster_metrics(infiles, (outfile_pickle, outfile_html)):
-    res = []
-    v_df = []
-    for infile in infiles:
-        df = pickle.load(open(infile, 'r'))
-        
-        res.append(df)
+#     df = pandas.DataFrame({'cell_id' : cell_id_permutation, 
+#                            'cell_type' : cell_types, 
+#                            'cluster' : cell_assignment,
+#                            'x' : pos_vec[:, 0], 
+#                            'y' : pos_vec[:, 1], 
+#                            'z' : pos_vec[:, 2]})
+#     df = df.join(df2, on='cell_type')
 
-    # # add in the two others
-    # fine_vars = df.copy().groupby('type_id').var()
-    # fine_vars['filename'] = "truth.fine"
 
-    # coarse_vars = df.copy().groupby('coarse').var()
-    # coarse_vars['filename'] = "truth.coarse"
-    # print coarse_vars
-    # v_df.append(fine_vars)
-    # v_df.append(coarse_vars)
+#     coarse_map = {'gc' : 0, 
+#                       'nac' : 1, 
+#                       'mwac' : 2, 
+#                       'bc' : 3, 
+#                       'other' : 4}
 
-    clust_df = pandas.concat(res)
-    print clust_df
-    #var_df = pandas.concat(v_df)
-    del clust_df['df']
+#     canon_true_fine = irm.util.canonicalize_assignment(df['cell_type'])
+#     canon_true_coarse = [coarse_map[x['des']] for x_i, x in df.iterrows()]
+#     ca = irm.util.canonicalize_assignment(df['cluster'])
 
-    pickle.dump({'clust_df' : clust_df, 
-                 #'var_df' : var_df
-             },
-                open(outfile_pickle, 'w'))
 
-    fid = open(outfile_html, 'w')
-    #fid.write(clust_df.to_html())
-    #fid.write(var_df.to_html())
-    fid.close()
+#     ari = metrics.adjusted_rand_score(canon_true_fine, ca)
+#     ari_coarse = metrics.adjusted_rand_score(canon_true_coarse, ca)
+
+#     ami = metrics.adjusted_mutual_info_score(canon_true_fine, ca)
+#     ami_coarse = metrics.adjusted_mutual_info_score(canon_true_coarse, ca)
+
+                                             
+#     jaccard = rand.compute_jaccard(canon_true_fine, ca)
+#     jaccard_coarse = rand.compute_jaccard(canon_true_coarse, ca)
+
+#     ss = rand.compute_similarity_stats(canon_true_fine, ca)
+    
+#     # other statistics 
+    
+#     # cluster count
+    
+#     # average variance x
+#     vars = df.groupby('cluster').var()
+#     # average variance y
+#     # average variance z
+    
+#     pickle.dump({'ari' : ari, 
+#                  'ari_coarse' : ari_coarse, 
+#                  'ami' : ami, 
+#                  'ami_coarse' : ami_coarse, 
+#                  'jaccard' : jaccard, 
+#                  'jaccard_coarse' : jaccard_coarse,
+#                  'n11' : ss['n11'], 
+#                  'vars' : vars, 
+#                  'cluster_n' : len(np.unique(df['cluster'])),
+
+#                  'df' : df
+#                  }, open(out_filename, 'w'))
+
+# @merge(compute_cluster_metrics, ("cluster_metrics.pickle", 'cluster.metrics.html'))
+# def merge_cluster_metrics(infiles, (outfile_pickle, outfile_html)):
+#     res = []
+#     v_df = []
+#     for infile in infiles:
+#         d = pickle.load(open(infile, 'r'))
+#         df = d['df']
+#         res.append({'filename' : infile, 
+#                     'ari' : d['ari'], 
+#                     'ari_coarse' : d['ari_coarse'], 
+#                     'ami' : d['ami'], 
+#                     'ami_coarse' : d['ami_coarse'], 
+#                     'jaccard_coarse' : d['jaccard_coarse'], 
+#                     'jaccard' : d['jaccard'], 
+#                     'cluster_n' : d['cluster_n'],
+#                     'n11' : d['n11'], 
+#                 })
+
+#         vars = d['vars']
+#         vars['filename'] = infile
+#         v_df.append(vars)
+
+
+#     # add in the two others
+#     fine_vars = df.copy().groupby('cell_type').var()
+#     fine_vars['filename'] = "truth.fine"
+
+#     coarse_vars = df.copy().groupby('des').var()
+#     coarse_vars['filename'] = "truth.coarse"
+#     print coarse_vars
+#     v_df.append(fine_vars)
+#     v_df.append(coarse_vars)
+
+#     clust_df = pandas.DataFrame(res)
+#     var_df = pandas.concat(v_df)
+
+#     pickle.dump({'clust_df' : clust_df, 
+#                  'var_df' : var_df},
+#                 open(outfile_pickle, 'w'))
+
+#     fid = open(outfile_html, 'w')
+#     fid.write(clust_df.to_html())
+#     fid.write(var_df.to_html())
+#     fid.close()
 
 # @files(merge_cluster_metrics, ("spatial_var.pdf", "spatial_var.txt"))
 # def plot_cluster_vars((infile_pickle, infile_rpt), (outfile_plot, outfile_rpt)):
@@ -1284,14 +1116,10 @@ def merge_cluster_metrics(infiles, (outfile_pickle, outfile_html)):
               
 if __name__ == "__main__":    
     pipeline_run([data_create_thold, 
-                  create_latents_srm, 
-                  create_latents_srm_clist_xsoma, 
                   create_inits, 
-                  get_results, 
-                  plot_hypers,
-                  plot_circos_latent, 
-                  compute_cluster_metrics, 
-                  merge_cluster_metrics,
+                  # get_results, 
+                  # plot_hypers,
+                  # plot_circos_latent
                   # data_retina_adj_count, 
               # create_inits, 
               # plot_scores_z, 
@@ -1307,5 +1135,5 @@ if __name__ == "__main__":
               # merge_cluster_metrics,
               # plot_cluster_vars, 
               # plot_cluster_aris, 
-              ]) # , multiprocess=3)
+              ])
     

@@ -91,8 +91,7 @@ def create_data(con, area_thold_min):
     cells = pandas.io.sql.read_frame("select c.cell_id, s.x, s.z, s.y, c.type_id, t.coarse from cells as c join somapositions as s on c.cell_id = s.cell_id join types as t on c.type_id = t.type_id where s.x is not null", 
                                      con, index_col='cell_id')
     cells = cells.reindex(np.random.permutation(cells.index))
-    print cells.head()
-    print cells.index.values
+
 
     contact_x_lists = create_contact_x_lists(con, area_thold_min)
 
