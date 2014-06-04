@@ -1,0 +1,43 @@
+;; This buffer is for notes you don't want to save, and for Lisp evaluation.
+;; If you want to create a file, visit that file with C-x C-f,
+;; then enter the text in that file's own buffer.
+
+
+Include secition of processor per the figure 
+"We identified a region of processor"
+
+fig 5 do you want a color key
+
+
+also the fig itself is missing the a and b labels
+
+
+
+put up website
+
+
+hmmmm, figures 8 9 10
+so first of all, when you reference them in the text they are out of order
+
+The actual clusterings for iSRM, the iSBM, and SBMk=12 are shown in figures 8, 10, and 9 respectively.
+
+
+so, are some of the bits in those figures supposed to look squished?
+like, fig 8, the ones at the bottom
+and in fig 9, the bottom of one of the bottom bits is cut off
+I think by the page number?
+and why does the page number appear above the figure number :-P
+answer: Latex
+
+
+section 4.6, you have the word mu instead of the symbol
+
+
+
+ok in section 4.6 (hyperprior grids) it would be useful to reference each paragraph back to the place where you explained that model. I'm just noticing this because I want to check that the variables match.
+
+
+
+ok in 4.6 for the logistic distance bernoulli, lambda and mu are described as hyperparameters. in section 3.2 where that model is described, lambda^hp and mu^hp appear once each, but it is not clear (to me) what they are supposed to be, since you described p_max and p_min as per-graph hyperparameters
+(but it is more clear based on section 4.6, just pointing this out)
+

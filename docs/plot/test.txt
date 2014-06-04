@@ -1,0 +1,9 @@
+chr - hs1 1 0 28 chr1
+chr - hs2 2 0 32 chr2
+band hs1 p36.33 p36.33 0 23 haha
+band hs1 p36.33 p36.33 23 28 haha
+band hs2 p36.33 p36.33 0 30 haha3
+band hs2 p36.33 p36.33 30 32 haha4
+
+
+

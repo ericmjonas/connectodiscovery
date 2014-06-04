@@ -15,6 +15,9 @@ clust_df = clust_df[clust_df['filename'].str.contains("retina.%d" % THOLD_IDX)]
 def f(x):
     x['scoreidx'] = np.array(np.argsort(np.argsort(x['score'])[::-1]))
     return x
+
+print clust_df.index.values
+
 clust_df = clust_df.groupby('filename').apply(f )
 
 clust_df['model'] = None
@@ -65,10 +68,28 @@ f = pylab.figure(figsize=(12, 8))
 # f.savefig('pl.comparison.allparam.ari.pdf')
 
 preddf = pickle.load(open("predlinks.pickle", 'r'))
-preddf['srm'] = preddf['filename'].str.contains('srm')
-preddf = preddf[preddf['filename'].str.contains('fixed')]
-preddf['distvar'] = preddf.apply(lambda x : x['filename'].split('.')[5], axis=1)
 
+#print preddf['filename']
+print preddf[preddf['filename'].str.contains("simple_bb")]['filename']
+
+
+
+preddf['srm'] = preddf['filename'].str.contains('srm')
+
+preddf = preddf[preddf['filename'].str.contains('fixed')]
+
+# get rid of the one-off value
+
+#preddf['model'] = preddf[preddf['filename'].str.contains('simple_bb') == False]
+def foo(x):
+    s = x['filename'].split('.')
+    if len(s) > 5:
+        return s[5]
+    else:
+        return ""
+
+preddf['distvar'] = preddf.apply(foo, axis=1)
+print 'here'
 preddf['tp'] = preddf['t_t'] / preddf['t_tot']
 preddf['fp'] = preddf['f_t'] / preddf['f_tot']
 preddf['frac_wrong'] = 1.0 - (preddf['t_t'] + preddf['f_f']) / (preddf['t_tot'] + preddf['f_tot'])
@@ -92,7 +113,7 @@ preddf['filename']=preddf['filename'].apply(lambda x : x[:-(len(".predlinks.pick
 aucsdf = preddf.groupby(['filename', 'chain_i']).apply(g_auc).reset_index()
 aucsdf['chain_i'] = aucsdf['chain_i'].apply(lambda x : int(x))
 
-aucsdf['distvar'] = aucsdf.apply(lambda x : x['filename'].split('.')[5], axis=1)
+aucsdf['distvar'] = aucsdf.apply(foo, axis=1)
 aucsdf['srm'] = aucsdf['filename'].str.contains('srm')
 aucsdf.set_index(['filename', 'chain_i'], inplace=True)
 

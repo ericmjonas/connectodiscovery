@@ -1,0 +1,34 @@
+
+Next goal: 
+one sentence per paragraph
+"What every paragraph brings home" 
+
+"The data shows so and so" 
+
+We developed an algorithm that blah
+
+it works on simulated data
+
+we use it on these datasets
+
+each figure gets one sentence
+
+the paragraph is the conclusion of the figure
+
+be sure you have everything for the paper
+
+"just reading the sentences should understand the logic of the paper" 
+
+You might not convince them 
+
+
+we find there are a small number of cell types defined by connectivity
+they are roughly 
+
+Use this for everything including the discussion
+
+
+
+Articles should fill no more than 5 pages, and Letters no more than 4 pages, of Nature. An uninterrupted page of text contains about 1,300 words. A typical Article contains about 3,000 words of text and, additionally, five small display items (figures and/or tables) with brief legends, reference list and methods section if applicable. A typical Letter to Nature contains about 1,500 words of text (excluding the first paragraph of Letters, figure legends, reference list and the methods section if applicable) and four small display items (figures and/or tables) with brief legends. A composite figure (with several panels) usually needs to take about half a page, equivalent to about 600 words, in order for all the elements to be visible (see section 5.9 for instructions on sizing figures).
+
+

@@ -1,0 +1,4 @@
+../../connattrib/data/retina.1.srm_clist_xsoma.3.1.xyz.0.2.data-fixed_20_100-anneal_slow_400.circos.01.svg mouseretina/mouseretina_tgt.circos.ai
+../../connattrib/data/retina.1.srm_clist_xsoma.3.1.xyz.0.2.data-fixed_20_100-anneal_slow_400.circos.00.small.svg mouseretina/mouseretina_tgt.circos.00.small.ai
+../../connattrib/data/retina.1.srm_clist_xsoma.3.1.xyz.0.2.data-fixed_20_100-anneal_slow_400.circos.01.small.svg mouseretina/mouseretina_tgt.circos.01.small.ai
+../../connattrib/data/retina.1.srm_clist_xsoma.3.1.xyz.0.2.data-fixed_20_100-anneal_slow_400.circos.02.small.svg mouseretina/mouseretina_tgt.circos.02.small.ai

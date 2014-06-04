@@ -1,0 +1,10 @@
+
+chr - c0 c0 0 36 red
+
+chr - c1 c1 0 36 green
+
+chr - c2 c2 0 36 blue
+
+chr - c3 c3 0 36 yellow
+
+chr - c4 c4 0 36 purple

@@ -1,3 +1,6 @@
 *.pyc
 *~
 data/
+.ipy*
+.DS_Store*
+*.aux
