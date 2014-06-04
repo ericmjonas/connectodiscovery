@@ -4,3 +4,10 @@ data/
 .ipy*
 .DS_Store*
 *.aux
+/docs/paper.bbl
+/docs/paper.bcf
+/docs/paper.blg
+/docs/paper.log
+/docs/paper.out
+/docs/paper.pdf
+/docs/paper.run.xml
