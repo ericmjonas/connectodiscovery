@@ -69,10 +69,7 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 EXPERIMENTS = [
-    ('retina.0.ld.0.0.x', 'debug_2_100', 'debug_20'), 
     ('retina.0.ld.0.0.xyz','debug_2_100', 'debug_20'), 
-    ('retina.0.ld.0.0.yz', 'debug_2_100', 'debug_20'), 
-
 
 
     #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
@@ -105,23 +102,23 @@ COMP_KS = [3]
 #                 bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
 #                 EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
 
-### 
-for ti in [1]: # (len(THOLDS)):
-    for ml_i in [2]:
-        for pmax_i in [0]:
-            for vars in ['xyz']: 
-                bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
-                EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
+
+# for ti in [1]: # (len(THOLDS)):
+#     for ml_i in [2]:
+#         for pmax_i in [0]:
+#             for vars in ['xyz']: 
+#                 bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
+#                 EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
 
 
-for ti in [1]:
-    for ml_i in [3] : # range(len(MULAMBS)):
-        for pmax_i in range(len(PMAXS)):
-            for vars in ['xyz']:
-                for var_scale in range(len(VAR_SCALES)):
-                    for comp_k in COMP_KS:
-                        bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-                        EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
+# for ti in [1]:
+#     for ml_i in [3] : # range(len(MULAMBS)):
+#         for pmax_i in range(len(PMAXS)):
+#             for vars in ['xyz']:
+#                 for var_scale in range(len(VAR_SCALES)):
+#                     for comp_k in COMP_KS:
+#                         bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
+#                         EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
                 
 
             
@@ -522,6 +519,7 @@ def get_results(exp_wait, exp_results):
                  'exp' : d}, 
                 open(exp_results, 'w'))
 
+## TODO GET OLD PLOTTING FROM PROCESS.PY
 
 # @transform(get_results, suffix(".samples"), 
 #            [(".%d.clusters.pdf" % d, ".%d.latent.pdf" % d )  for d in range(2)])
