@@ -1,8 +1,8 @@
 """
 """
 import sys
-# total hack
-sys.path.append("../../")
+# total hack, I should really know better
+sys.path.append("../../code")
 
 from ruffus import *
 import cPickle as pickle
@@ -61,7 +61,7 @@ def create_volume(infile, outfile):
     open(outfile, 'w').write("done\n")
 
 
-RETINA_DB = "../preprocess/mouseretina/mouseretina.db"
+RETINA_DB = "../../../preprocess/mouseretina/mouseretina.db"
 
 
 
@@ -85,8 +85,8 @@ PMAXS = [0.95, 0.9, 0.7]
 BB_ALPHAS = [1.0]
 BB_BETAS = [1.0]
 
-VAR_SCALES = [0.1, 1.0]
-COMP_KS = [3]
+VAR_SCALES = [0.01, 0.1, 1.0]
+COMP_KS = [2, 3]
 
 # for ti in [1, 2,  3]: # remember to add 2 back in ! 
 #     for v in range(len(VAR_SCALES)):
@@ -103,22 +103,22 @@ COMP_KS = [3]
 #                 EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
 
 
-# for ti in [1]: # (len(THOLDS)):
-#     for ml_i in [2]:
-#         for pmax_i in [0]:
-#             for vars in ['xyz']: 
-#                 bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
-#                 EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
+for ti in [1]: # (len(THOLDS)):
+    for ml_i in [3]:
+        for pmax_i in range(len(PMAXS)):
+            for vars in ['xyz']: 
+                bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
+                EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_1000'))
 
 
-# for ti in [1]:
-#     for ml_i in [3] : # range(len(MULAMBS)):
-#         for pmax_i in range(len(PMAXS)):
-#             for vars in ['xyz']:
-#                 for var_scale in range(len(VAR_SCALES)):
-#                     for comp_k in COMP_KS:
-#                         bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-#                         EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
+for ti in [1]:
+    for ml_i in [3] : 
+        for pmax_i in range(len(PMAXS)):
+            for vars in ['xyz']:
+                for var_scale in range(len(VAR_SCALES)):
+                    for comp_k in COMP_KS:
+                        bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
+                        EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_1000'))
                 
 
             
@@ -133,7 +133,7 @@ INIT_CONFIGS = {'fixed_20_100' : {'N' : 20,
 
 slow_anneal = irm.runner.default_kernel_anneal()
 slow_anneal[0][1]['anneal_sched']['start_temp'] = 64.0
-slow_anneal[0][1]['anneal_sched']['iterations'] = 300
+slow_anneal[0][1]['anneal_sched']['iterations'] = 800
 
 def generate_ld_hypers():
     space_vals =  irm.util.logspace(1.0, 80.0, 40)
@@ -174,14 +174,14 @@ slow_anneal[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = None  # soma_x_hp_
 
 
 KERNEL_CONFIGS = {
-    'anneal_slow_400' : {'ITERS' : 400, 
+    'anneal_slow_1000' : {'ITERS' : 1000, 
                          'kernels' : slow_anneal},
     'debug_20' : {'ITERS' : 20, 
                   'kernels': irm.runner.default_kernel_anneal(1.0, 20)
               }
     }
 
-pickle.dump(slow_anneal, open("anneal_slow_400.config", 'w'))
+pickle.dump(slow_anneal, open("anneal_slow_1000.config", 'w'))
 
 def create_tholds():
     """
@@ -520,89 +520,47 @@ def get_results(exp_wait, exp_results):
                 open(exp_results, 'w'))
 
 ## TODO GET OLD PLOTTING FROM PROCESS.PY
-
-# @transform(get_results, suffix(".samples"), 
-#            [(".%d.clusters.pdf" % d, ".%d.latent.pdf" % d )  for d in range(2)])
-# def plot_best_cluster_latent(exp_results, 
-#                      out_filenames):
-
-#     sample_d = pickle.load(open(exp_results))
-#     chains = sample_d['chains']
+@transform(get_results, suffix(".samples"), 
+           ".latent.pdf")
+def plot_best_cluster_latent(exp_results, 
+                     out_filename):
     
-#     exp = sample_d['exp']
-#     data_filename = exp['data_filename']
-#     data = pickle.load(open(data_filename))
-#     data_basename, _ = os.path.splitext(data_filename)
-#     meta = pickle.load(open(data_basename + ".meta"))
-
-#     meta_infile = meta['infile']
-#     print "meta_infile=", meta_infile
-
-#     d = pickle.load(open(meta_infile, 'r'))
-#     conn = d['dist_matrix']['link']
-#     cell_id_permutation = d['cell_id_permutation']
-
-#     dist_matrix = d['dist_matrix']
-#     orig_data = pickle.load(open(d['infile']))
-#     cell_types = d['types'][:len(conn)]
-
-#     type_metadata_df = pickle.load(open("type_metadata.pickle", 'r'))['type_metadata']
-#     type_color_map = {'gc' : 'r', 
-#                       'ac' : 'b', 
-#                       'bc' : 'g', 
-#                       'other' : 'k'}
-
-#     TYPE_N = np.max(cell_types) + 1
-
-#     type_colors = []
-#     for i in range(TYPE_N):
-#         if (i < 70):
-#             d = type_metadata_df.loc[i+1]['desig']
-#         else:
-#             d = "  "
-#         type_colors.append(type_color_map.get(d[:2], 'k'))
-
-#     print type_colors 
+    sample_d = pickle.load(open(exp_results))
+    chains = sample_d['chains']
     
+    exp = sample_d['exp']
+    data_filename = exp['data_filename']
+    data = pickle.load(open(data_filename))
+    data_basename, _ = os.path.splitext(data_filename)
+    meta = pickle.load(open(data_basename + ".meta"))
 
-#     chains = [c for c in chains if type(c['scores']) != int]
-#     CHAINN = len(chains)
+    meta_infile = meta['infile']
+    print "meta_infile=", meta_infile
 
-#     chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
+    d = pickle.load(open(meta_infile, 'r'))
+    conn = d['conn_mat']
+    cells = d['cells']
 
-#     soma_positions = pickle.load(open('soma.positions.pickle', 'r'))
-#     synapses = pickle.load(open('synapses.pickle', 'r'))['synapsedf']
-#     # only take the first 950
-#     synapses = synapses[(synapses['from_id'] < len(cell_id_permutation) )  & (synapses['to_id']<len(cell_id_permutation))]
+    cell_types = cells['type_id']
 
-#     reorder_synapses = util.reorder_synapse_ids(synapses, cell_id_permutation)
+    chains = [c for c in chains if type(c['scores']) != int]
+    CHAINN = len(chains)
 
-#     pos_vec = soma_positions['pos_vec'][cell_id_permutation]
-#     model = data['relations']['R1']['model']
-#     print dist_matrix.dtype, model
-#     if "istance" not in model:
-#         dist_matrix = dist_matrix['link']
+    chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
+    chain_pos = 0
 
-#     for chain_pos, (cluster_fname, latent_fname) in enumerate(out_filenames):
-#         best_chain_i = chains_sorted_order[chain_pos]
-#         best_chain = chains[best_chain_i]
-#         sample_latent = best_chain['state']
-#         cell_assignment = sample_latent['domains']['d1']['assignment']
+    best_chain_i = chains_sorted_order[chain_pos]
+    best_chain = chains[best_chain_i]
+    sample_latent = best_chain['state']
+    cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
+    if 'R1' in data['relations']:
+        irm.experiments.plot_latent(sample_latent, 
+                                    data['relations']['R1']['data'], 
+                                    out_filename)
+    else:
+        # dont do the clist ones
+        file(out_filename, 'w').write("test")
 
-#         a = irm.util.canonicalize_assignment(cell_assignment)
-
-#         util.plot_cluster_properties(a, cell_types, 
-#                                      pos_vec, reorder_synapses, 
-#                                      cluster_fname, class_colors=type_colors)
-
-            
-#         print "model=", model, dist_matrix.dtype
-#         util.plot_latent(sample_latent, dist_matrix, latent_fname, 
-#                          model = model, 
-#                          PLOT_MAX_DIST=150.0, MAX_CLASSES=20)
-
-
-        
 @transform(get_results, suffix(".samples"), [".hypers.pdf"])
 def plot_hypers(exp_results, (plot_hypers_filename,)):
 
@@ -665,10 +623,10 @@ def plot_hypers(exp_results, (plot_hypers_filename,)):
     
 #     f.savefig(plot_params_filename)
 
-CIRCOS_DIST_THRESHOLDS = [50]
+CIRCOS_DIST_THRESHOLDS = [20, 40, 60]
 
 @transform(get_results, suffix(".samples"), 
-           [(".circos.%02d.png" % d, 
+           [(".circos.%02d.svg" % d, 
              ".circos.%02d.small.svg" % d)  for d in range(len(CIRCOS_DIST_THRESHOLDS))])
 def plot_circos_latent(exp_results, 
                        out_filenames):
@@ -796,23 +754,23 @@ def plot_circos_latent(exp_results,
         #                               'color' : ",".join(true_color_list) }, 
         #                   cell_types)
         
-        types_sparse = np.array(cells['type_id'], dtype=np.float32)
-        types_sparse[types_sparse <72] = np.nan
+        # types_sparse = np.array(cells['type_id'], dtype=np.float32)
+        # types_sparse[types_sparse <72] = np.nan
  
-        circos_p.add_plot('scatter', {'r0' : '1.8r', 
-                                      'r1' : '1.9r', 
-                                      'min' : 70, 
-                                      'max' : 78, 
-                                      'gliph' : 'circle', 
-                                      'color' : 'black', 
-                                      'stroke_thickness' : 0}, 
-                          types_sparse, 
-                          {'backgrounds' : [('background', {'color': 'vvlblue', 
-                                                            'y0' : 70, 
-                                                            'y1' : 78})],  
-                           'axes': [('axis', {'color' : 'vgrey', 
-                                              'thickness' : 1, 
-                                              'spacing' : '%fr' % (0.1)})]})
+        # circos_p.add_plot('scatter', {'r0' : '1.8r', 
+        #                               'r1' : '1.9r', 
+        #                               'min' : 70, 
+        #                               'max' : 78, 
+        #                               'gliph' : 'circle', 
+        #                               'color' : 'black', 
+        #                               'stroke_thickness' : 0}, 
+        #                   types_sparse, 
+        #                   {'backgrounds' : [('background', {'color': 'vvlblue', 
+        #                                                     'y0' : 70, 
+        #                                                     'y1' : 78})],  
+        #                    'axes': [('axis', {'color' : 'vgrey', 
+        #                                       'thickness' : 1, 
+        #                                       'spacing' : '%fr' % (0.1)})]})
 
         
         # circos_p.add_plot('heatmap', {'r0' : '1.7r', 
@@ -853,29 +811,43 @@ def plot_circos_latent(exp_results,
         # ax_color_legend.axvline(10, c='k')
         # ax_color_legend.set_xticks([])
         # f_color_legend.savefig(color_legend_filename)
-        print "TYPE_N=", TYPE_N
-        type_color_map = {'gc' : 0, 
-                          'nac' : 1, 
-                          'mwac' : 2, 
-                          'bc' : 3, 
-                          'other' : 4, 
-                          None : 4}
 
-        # pick colors
-        colors = ['true_coarse_%s' % s for s in ['gc', 'nac', 'mwac', 'bc', 'other']]
+        #COARSE COLOR TYPES
+        plot_truth_coarse = True
 
-        print cells['coarse']
-        circos_p.add_plot('heatmap', {'r0' : '1.7r', 
-                                      'r1' : '1.8r', 
-                                      'min' : 0, 
-                                      'max' : 4, 
-                                      'stroke_thickness' :0,
-                                      'color': ",".join(colors)}, 
-                          [type_color_map[c] for c in cells['coarse']])
-        circos_p.add_plot('text', {'r0' : '1.9r', 
-                                   'r1' : '2.0r', 
-                                   'label_size' : '7p'}, 
-                          cells['type_id'])
+        if plot_truth_coarse:
+            print "TYPE_N=", TYPE_N
+            type_color_map = {'gc' : 0, 
+                              'nac' : 1, 
+                              'mwac' : 2, 
+                              'bc' : 3, 
+                              'other' : 4, 
+                              None : 4}
+
+            # pick colors
+            colors = ['true_coarse_%s' % s for s in ['gc', 'nac', 'mwac', 'bc', 'other']]
+
+            circos_p.add_plot('heatmap', {'r0' : '1.7r', 
+                                          'r1' : '1.8r', 
+                                          'min' : 0, 
+                                          'max' : 4, 
+                                          'stroke_thickness' :0,
+                                          'color': ",".join(colors)}, 
+                              [type_color_map[c] for c in cells['coarse']])
+            # circos_p.add_plot('text', {'r0' : '1.9r', 
+            #                            'r1' : '2.0r', 
+            #                            'label_size' : '7p'}, 
+            #                   cells['type_id'])
+        else:
+            ### FINE TRUE TYPES
+            circos_p.add_plot('heatmap', {'r0' : '1.7r', 
+                                          'r1' : '1.8r', 
+                                          'min' : 0, 
+                                          'max' : 80, 
+                                          'stroke_thickness' :0,
+                                          }, 
+                              cells['type_id'])
+
 
         # circos_p.add_plot('scatter', {'r0' : '1.01r', 
         #                               'r1' : '1.10r', 
@@ -910,68 +882,74 @@ def plot_circos_latent(exp_results,
                                             
         irm.plots.circos.write(circos_p, circos_filename_small)
         
-# @transform(get_results, suffix(".samples"), 
-#            ".somapos.pdf")
+@transform(get_results, suffix(".samples"), 
+           ".somapos.pdf")
 
-# def plot_clustered_somapos(exp_results, 
-#                            out_filename):
+def plot_clustered_somapos(exp_results, 
+                           out_filename):
 
-#     sample_d = pickle.load(open(exp_results))
-#     chains = sample_d['chains']
+    sample_d = pickle.load(open(exp_results))
+    chains = sample_d['chains']
     
-#     exp = sample_d['exp']
-#     data_filename = exp['data_filename']
-#     data = pickle.load(open(data_filename))
-#     data_basename, _ = os.path.splitext(data_filename)
-#     meta = pickle.load(open(data_basename + ".meta"))
+    exp = sample_d['exp']
+    data_filename = exp['data_filename']
+    data = pickle.load(open(data_filename))
+    data_basename, _ = os.path.splitext(data_filename)
+    meta = pickle.load(open(data_basename + ".meta"))
 
-#     meta_infile = meta['infile']
+    meta_infile = meta['infile']
+    print "meta_infile=", meta_infile
 
-#     d = pickle.load(open(meta_infile, 'r'))
-#     conn = d['dist_matrix']['link']
-#     cell_id_permutation = d['cell_id_permutation']
+    d = pickle.load(open(meta_infile, 'r'))
+    conn = d['conn_mat']
+    cells = d['cells']
 
-#     dist_matrix = d['dist_matrix']
-#     orig_data = pickle.load(open(d['infile']))
-#     cell_types = d['types'][:len(conn)]
+    cell_types = cells['type_id']
+
+    chains = [c for c in chains if type(c['scores']) != int]
+    CHAINN = len(chains)
+
+    chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
+    chain_pos = 0
+
+    best_chain_i = chains_sorted_order[chain_pos]
+    best_chain = chains[best_chain_i]
+    sample_latent = best_chain['state']
+    cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
+
     
-#     type_metadata_df = pickle.load(open("type_metadata.pickle", 'r'))['type_metadata']
+    cells['cluster'] = cell_assignment
+    print cells.head()
+    print cells
 
-#     chains = [c for c in chains if type(c['scores']) != int]
-#     CHAINN = len(chains)
+    class_ids = sorted(np.unique(cell_assignment))
+    CLASS_N = len(class_ids)
 
-#     chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
-#     chain_pos = 0
+    custom_color_map = {}
+    for c_i, c_v in enumerate(class_ids):
+        c = np.array(pylab.cm.Set1(float(c_i) / CLASS_N)[:3])*255
+        custom_color_map[c_v]  = c.astype(int)
 
-#     best_chain_i = chains_sorted_order[chain_pos]
-#     best_chain = chains[best_chain_i]
-#     sample_latent = best_chain['state']
-#     cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
+    f = pylab.figure(figsize=(12, 8))
+    ax = f.add_subplot(1, 1, 1)
 
-#     soma_positions = pickle.load(open('soma.positions.pickle', 'r'))
-#     pos_vec = soma_positions['pos_vec'][cell_id_permutation]
 
-#     f = pylab.figure(figsize=(12, 8))
-#     ax = f.add_subplot(1, 1, 1)
 
-#     CLASS_N = len(np.unique(cell_assignment))
-#     colors = np.linspace(0, 1.0, CLASS_N)
+    ca = irm.util.canonicalize_assignment(cell_assignment)
+    # build up the color rgb
+    cell_colors = np.zeros((len(ca), 3))
+    for ci, c in enumerate(ca):
+        cell_colors[ci] = pylab.cm.Set1(float(c) / CLASS_N)[:3]
+    ax.scatter(cells['y'], cells['z'], edgecolor='none', 
+               c = cell_colors, s=60)
+    ax.set_ylim(0, 85)
+    ax.set_xlim(5, 115)
+    ax.set_aspect(1.0)
+    ax.plot([10, 20], [3, 3], linewidth=5, c='k')
+    ax.set_xticks([])
+    ax.set_yticks([])
 
-#     ca = irm.util.canonicalize_assignment(cell_assignment)
-#     # build up the color rgb
-#     cell_colors = np.zeros((len(ca), 3))
-#     for ci, c in enumerate(ca):
-#         cell_colors[ci] = pylab.cm.Set1(float(c) / CLASS_N)[:3]
-#     ax.scatter(pos_vec[:, 1], pos_vec[:, 2], edgecolor='none', 
-#                c = cell_colors, s=60)
-#     ax.set_ylim(0, 85)
-#     ax.set_xlim(5, 115)
-#     ax.set_aspect(1.0)
-#     ax.plot([10, 20], [3, 3], linewidth=5, c='k')
-#     ax.set_xticks([])
-#     ax.set_yticks([])
-
-#     f.savefig(out_filename)
+    f.savefig(out_filename)
 
 # @transform(get_results, suffix(".samples"), 
 #            ".truth_latent.pdf" )
@@ -1381,16 +1359,13 @@ if __name__ == "__main__":
                   # data_retina_adj_count, 
               # create_inits, 
               # plot_scores_z, 
-              # plot_best_cluster_latent, 
+                  plot_best_cluster_latent, 
               # #plot_hypers, 
               # plot_latents_ld_truth, 
               # plot_params, 
               # create_latents_ld_truth, 
               # plot_circos_latent, 
-              # plot_clustered_somapos,
-              # plot_truth_latent, 
-              # compute_cluster_metrics, 
-              # merge_cluster_metrics,
+               plot_clustered_somapos,
               # plot_cluster_vars, 
               # plot_cluster_aris, 
               ]) # , multiprocess=3)
