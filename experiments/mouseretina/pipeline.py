@@ -72,7 +72,8 @@ EXPERIMENTS = [
     ('retina.0.ld.0.0.xyz','debug_2_100', 'debug_20'), 
 
 
-    #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
+    ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_1000'), 
+    ('retina.1.bb' , 'fixed_20_100', 'anneal_slow_1000'), 
     #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
 ]
 
@@ -88,12 +89,12 @@ BB_BETAS = [1.0]
 VAR_SCALES = [0.01, 0.1, 1.0]
 COMP_KS = [2, 3]
 
-# for ti in [1, 2,  3]: # remember to add 2 back in ! 
-#     for v in range(len(VAR_SCALES)):
-#         for k in COMP_KS:
-#             EXPERIMENTS.append(('retina.%d.clist.%d.%d' % (ti, v, k) , 
-#                                 'fixed_20_100', 'anneal_slow_400'))
-#             pass
+for ti in [1]: # remember to add 2 back in ! 
+    for v in range(len(VAR_SCALES)):
+        for k in COMP_KS:
+            EXPERIMENTS.append(('retina.%d.clist.%d.%d' % (ti, v, k) , 
+                                'fixed_20_100', 'anneal_slow_1000'))
+
 
 # for ti in range(len(THOLDS)):
 #     for ml_i in range(len(MULAMBS)):
@@ -247,6 +248,38 @@ def create_latents_srm(infile,
 
 
 
+
+def create_latents_bb_params():
+    for a in create_tholds():
+        inf = a[1][0]
+        outf_base = inf[:-len('.data.pickle')]
+        outf = "%s.bb" % (outf_base)
+        yield inf, [outf + '.data', 
+                    outf + '.latent', outf + '.meta']
+
+
+@follows(data_create_thold)
+@files(create_latents_bb_params)
+def create_latents_bb(infile, 
+                       (data_filename, latent_filename, meta_filename)):
+
+
+    d = pickle.load(open(infile, 'r'))
+    conn_mat = d['conn_mat']
+    model_name = "BetaBernoulliNonConj"
+    irm_latent, irm_data = irm.irmio.default_graph_init(conn_mat, model_name)
+
+    HPS = {'alpha' : BB_ALPHAS[0], 
+           'beta' : BB_BETAS[0]}
+
+    irm_latent['relations']['R1']['hps'] = HPS
+
+    pickle.dump(irm_latent, open(latent_filename, 'w'))
+    pickle.dump(irm_data, open(data_filename, 'w'))
+    pickle.dump({'infile' : infile, 
+                 }, open(meta_filename, 'w'))
+
+
 def create_latents_xsoma_params():
     for a in create_tholds():
         inf = a[1][0]
@@ -278,7 +311,7 @@ def create_latents_xsoma(infile,
     HPS = {'kappa' : 0.0001, 
            'mu' : 50.0, 
            'sigmasq' : 0.1, 
-           'nu' : 10.0}
+           'nu' : 15.0}
 
     latent['relations']['r_soma_x']['hps'] = HPS
 
@@ -387,7 +420,7 @@ def create_latents_srm_clist_xsoma(infile,
     soma_x_HPS = {'kappa' : 0.0001, 
                   'mu' : 50.0, 
                   'sigmasq' : 0.1, 
-                  'nu' : 10.0}
+                  'nu' : 15.0}
 
     graph_latent['relations']['R1']['hps'] = HPS
 
@@ -418,6 +451,7 @@ def init_generator():
 @follows(create_latents_srm)
 @follows(create_latents_clist)
 @follows(create_latents_xsoma)
+@follows(create_latents_bb)
 @follows(create_latents_srm_clist_xsoma)
 @files(init_generator)
 def create_inits(data_filename, out_filenames, init_config_name, init_config):
@@ -504,8 +538,13 @@ def get_results(exp_wait, exp_results):
     # reorg on a per-seed basis
     for jid in d['jids']:
         job = multyvac.get(jid)
-        if job.status  == "error" :
-            pass
+        job.wait()
+        if job.status  != "done" :
+            print "ERROR ERROR ERROR", jid, job.status
+            fid = open("error.%s" % jid, 'w')
+            fid.write("error! %s\n" % exp_wait)
+            fid.close()
+            
         else:
 
             chain_data = job.get_result()
@@ -556,7 +595,8 @@ def plot_best_cluster_latent(exp_results,
     if 'R1' in data['relations']:
         irm.experiments.plot_latent(sample_latent, 
                                     data['relations']['R1']['data'], 
-                                    out_filename)
+                                    out_filename, 
+                                    model=data['relations']['R1']['model'])
     else:
         # dont do the clist ones
         file(out_filename, 'w').write("test")
@@ -575,7 +615,7 @@ def plot_hypers(exp_results, (plot_hypers_filename,)):
 
     
     chains = [c for c in chains if type(c['scores']) != int]
-    if "clist" not in plot_hypers_filename:
+    if "srm" or "ld" in plot_hypers_filename:
         irm.experiments.plot_chains_hypers(f, chains, data)
 
     f.savefig(plot_hypers_filename)
@@ -651,6 +691,7 @@ def plot_circos_latent(exp_results,
 
     chains = [c for c in chains if type(c['scores']) != int]
     CHAINN = len(chains)
+    print "THERE ARE", CHAINN, "chains", [type(c['scores']) for c in chains]
 
     chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
     chain_pos = 0
@@ -908,6 +949,7 @@ def plot_clustered_somapos(exp_results,
 
     chains = [c for c in chains if type(c['scores']) != int]
     CHAINN = len(chains)
+    print "THERE ARE", CHAINN, "chains", [type(c['scores']) for c in chains]
 
     chains_sorted_order = np.argsort([d['scores'][-1] for d in chains])[::-1]
     chain_pos = 0
@@ -1184,9 +1226,9 @@ def compute_cluster_metrics(exp_results,
     pickle.dump(df, open(out_filename, 'w'))
 
 
-# @files(["data/retina.1.simple_bb.data-fixed_1-anneal_slow_400.samples", 
+# @files(["data/retina.1.simple_bb.data-fixed_4-anneal_slow_400.samples", 
 #         "data/retina.1.data.pickle"],
-#        "data/retina.1.simple_bb.data-fixed_1-anneal_slow_400.cluster_metrics.pickle" )
+#        "data/retina.1.simple_bb.data-fixed_4-anneal_slow_400.cluster_metrics.pickle" )
 # def compute_cluster_metrics_bb((samples, data), 
 #                                out_filename):
 
@@ -1203,42 +1245,43 @@ def compute_cluster_metrics(exp_results,
 #     pickle.dump(df, open(out_filename, 'w'))
 
 
-# @merge([compute_cluster_metrics, 
-#         compute_cluster_metrics_bb], 
-#        ("cluster_metrics.pickle", 'cluster.metrics.html'))
-# def merge_cluster_metrics(infiles, (outfile_pickle, outfile_html)):
-#     res = []
-#     v_df = []
-#     for infile in infiles:
-#         df = pickle.load(open(infile, 'r'))
+@merge([compute_cluster_metrics, 
+        #compute_cluster_metrics_bb
+    ], 
+       ("cluster_metrics.pickle", 'cluster.metrics.html'))
+def merge_cluster_metrics(infiles, (outfile_pickle, outfile_html)):
+    res = []
+    v_df = []
+    for infile in infiles:
+        df = pickle.load(open(infile, 'r'))
         
-#         res.append(df)
+        res.append(df)
 
-#     # # add in the two others
-#     # fine_vars = df.copy().groupby('type_id').var()
-#     # fine_vars['filename'] = "truth.fine"
+    # # add in the two others
+    # fine_vars = df.copy().groupby('type_id').var()
+    # fine_vars['filename'] = "truth.fine"
 
-#     # coarse_vars = df.copy().groupby('coarse').var()
-#     # coarse_vars['filename'] = "truth.coarse"
-#     # print coarse_vars
-#     # v_df.append(fine_vars)
-#     # v_df.append(coarse_vars)
+    # coarse_vars = df.copy().groupby('coarse').var()
+    # coarse_vars['filename'] = "truth.coarse"
+    # print coarse_vars
+    # v_df.append(fine_vars)
+    # v_df.append(coarse_vars)
 
-#     clust_df = pandas.concat(res)
-#     print clust_df
-#     #var_df = pandas.concat(v_df)
-#     del clust_df['df']
-#     clust_df = clust_df.set_index([np.arange(len(clust_df))])
+    clust_df = pandas.concat(res)
+    print clust_df
+    #var_df = pandas.concat(v_df)
+    del clust_df['df']
+    clust_df = clust_df.set_index([np.arange(len(clust_df))])
 
-#     pickle.dump({'clust_df' : clust_df, 
-#                  #'var_df' : var_df
-#              },
-#                 open(outfile_pickle, 'w'))
+    pickle.dump({'clust_df' : clust_df, 
+                 #'var_df' : var_df
+             },
+                open(outfile_pickle, 'w'))
 
-#     fid = open(outfile_html, 'w')
-#     #fid.write(clust_df.to_html())
-#     #fid.write(var_df.to_html())
-#     fid.close()
+    fid = open(outfile_html, 'w')
+    #fid.write(clust_df.to_html())
+    #fid.write(var_df.to_html())
+    fid.close()
 
 # @files(merge_cluster_metrics, ("spatial_var.pdf", "spatial_var.txt"))
 # def plot_cluster_vars((infile_pickle, infile_rpt), (outfile_plot, outfile_rpt)):
@@ -1353,9 +1396,9 @@ if __name__ == "__main__":
                   get_results, 
                   plot_hypers,
                   plot_circos_latent, 
-                  #compute_cluster_metrics, 
+                  compute_cluster_metrics, 
                   #compute_cluster_metrics_bb, 
-                  #merge_cluster_metrics,
+                  merge_cluster_metrics,
                   # data_retina_adj_count, 
               # create_inits, 
               # plot_scores_z, 
@@ -1366,7 +1409,7 @@ if __name__ == "__main__":
               # create_latents_ld_truth, 
               # plot_circos_latent, 
                plot_clustered_somapos,
-              # plot_cluster_vars, 
-              # plot_cluster_aris, 
+              #plot_cluster_vars, 
+              #plot_cluster_aris, 
               ]) # , multiprocess=3)
     

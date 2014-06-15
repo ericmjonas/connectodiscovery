@@ -1,4 +1,7 @@
-import numpy as np
+
+import sys
+# total hack, I should really know better
+sys.path.append("../../code")
 import numpy as np
 import cPickle as pickle
 import sqlite3
@@ -52,7 +55,7 @@ def compute_prob_matrix(tgt_latent, tgt_data, model_name='LogisticDistance'):
 THOLDS = [1, 2, 3]
 PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
 
-@files("../preprocess/mouseretina/mouseretina.db", ['truth.%d.ld.predlinks.pickle' % t for t in THOLDS])
+@files("../../../preprocess/mouseretina/mouseretina.db", ['truth.%d.ld.predlinks.pickle' % t for t in THOLDS])
 def create_truth(dbfile, outfiles):
     conn = sqlite3.connect(dbfile)
     for THOLD_i, outfile in zip(THOLDS, outfiles):
@@ -82,7 +85,7 @@ def create_truth(dbfile, outfiles):
                     'thold_i' : THOLD_i}, 
                     open(outfile, 'w'))
 
-@files("../preprocess/mouseretina/mouseretina.db", ['truth.%d.bb.predlinks.pickle' % t for t in THOLDS])
+@files("../../../preprocess/mouseretina/mouseretina.db", ['truth.%d.bb.predlinks.pickle' % t for t in THOLDS])
 def create_truth_bb(dbfile, outfiles):
     conn = sqlite3.connect(dbfile)
     for THOLD_i, outfile in zip(THOLDS, outfiles):
@@ -115,9 +118,9 @@ def create_truth_bb(dbfile, outfiles):
                     'thold_i' : THOLD_i}, 
                     open(outfile, 'w'))
 
-@transform(["data/retina.1.*.ld*.samples", 
-            "data/retina.1.*.srm_*.samples", 
-            "data/retina.1.simple_bb.data*.samples", 
+@transform(["data/retina.1.ld*.samples", 
+            "data/retina.1.srm_*.samples", 
+            "data/retina.1.bb.data*.samples", 
         ], 
            suffix(".samples"), ".predlinks.pickle")
 def compute_pred_mat(sample_name, outfile):
@@ -173,7 +176,7 @@ def compute_pred_mat(sample_name, outfile):
 
 @transform(["data/retina.1.ld*.samples", 
             "data/retina.1.srm_*.samples", 
-            "data/retina.1.simple_bb.data*.samples", 
+            "data/retina.1.bb.data*.samples", 
         ], 
            suffix(".samples"), ".predlinks_mean.pickle")
 def compute_pred_mean_mat(sample_name, outfile):
@@ -266,7 +269,7 @@ def compute_truth_pred_mat(infile, outfile):
     pickle.dump({'df' : df}, 
                 open(outfile, 'w'))
 
-
+@follows(compute_pred_mat)
 @merge(["data/retina.*.predlinks.pickle", compute_truth_pred_mat], 
        'predlinks.pickle')
 def merge_predlinks(infiles, outfile):
