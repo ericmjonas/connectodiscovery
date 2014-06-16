@@ -32,7 +32,7 @@ arxiv.pdf: paper.tex
 arxiv.tar.gz: arxiv.pdf arxiv.tex
 	tar czvf arxiv.tar.gz arxiv.tex arxiv.bbl 00README.XXX `python getgraphics.py paper.tex` mos6502.clusters.pdf
 
-MOUSERETINA_TGT=../../connattrib/data/retina.1.srm_clist_xsoma.3.1.xyz.0.2.data-fixed_20_100-anneal_slow_400
+MOUSERETINA_TGT=../experiments/mouseretina/data/retina.1.srm_clist_xsoma.3.1.xyz.1.2.data-fixed_20_100-anneal_slow_1000
 MOUSERETINA_OUT=mouseretina/mouseretina_tgt
 update_mouseretina:
 	cp ${MOUSERETINA_TGT}.latent.pdf ${MOUSERETINA_OUT}.latent.pdf
