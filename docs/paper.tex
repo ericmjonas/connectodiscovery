@@ -2,7 +2,7 @@
 \documentclass{article}
 \usepackage[english,american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
-\usepackage[disable]{todonotes}
+\usepackage{todonotes}
 \usepackage{grffile}
 \usepackage{booktabs}
 \usepackage{hyperref}
@@ -95,7 +95,9 @@ science. Early approaches focused on global graph properties, such as
 the types of scaling present in the network \autocite
 {WattsStrogatz1998}.  While this approach leads to an understanding
 of the global network, more recent work aims at identifying very small-scale
-repeat patterns, or “motifs” in networks\autocite{Milo2002}. \todo{motifs vs type}. 
+repeat patterns, or “motifs” in networks\autocite{Milo2002}. These motifs
+are defined not between different node types, but rather represent repeated
+patterns of topology. 
 
 The discovery of structure in probabilistic graphs is a crucial aspect
 in machine learning. Commonly used algorithms include
@@ -280,11 +282,12 @@ type. When we plot (fig~\ref{fig:mouseretina_compare}b) the
 anatomist-derived cell types along the left, we can see that each
 block consists of a roughly-homogeneous collection of types. 
 
-We can thus evaluate our model along three sets of parameters: how
+We evaluate our model along three sets of parameters: how
 closely does our clustering agree with neuroanatomists' knowledge? 
 Given two cells, how accurately can our model predict the link
 between them? And how closely does the spatial extent (within a layer)
 of our identified types agree with the known neuroanatomists. 
+
 
 We find that given the dataset many techniques allow for good
 link-predictive accuracy but poor agreement with neuroanatomists. In
