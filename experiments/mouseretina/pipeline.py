@@ -210,7 +210,24 @@ def data_create_thold(dbname,
                  'dist_mats' : dist_mats}, 
                 open(retina_outfile, 'w'))
 
+@transform(data_create_thold, suffix(".pickle"), ".png")
+def plot_data_raw((infile, ), outfile):
+    x = pickle.load(open(infile, 'r'))
+    cells = x['cells']
+    print cells
+    f = pylab.figure()
+    ax  = f.add_subplot(1, 1, 1)
+    ai = np.argsort(cells['y'])[::-1]
+    cm = x['conn_mat']
+    cm = cm[ai]
+    cm = cm[:, ai]
 
+    ax.imshow(cm, interpolation='nearest', cmap=pylab.cm.Greys)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    f.tight_layout()
+    f.savefig(outfile, dpi=200)
+    
 
 
 def create_latents_srm_params():
@@ -695,7 +712,7 @@ def plot_z_matrix(exp_results,
     f.savefig(out_filename)
 
 @transform(get_results, suffix(".samples"), [".hypers.pdf"])
-def plot_hypers(exp_results, (plot_hypers_filename,)):
+def plot_hypers_vs_iter(exp_results, (plot_hypers_filename,)):
 
     sample_d = pickle.load(open(exp_results))
     chains = sample_d['chains']
@@ -710,6 +727,37 @@ def plot_hypers(exp_results, (plot_hypers_filename,)):
     chains = [c for c in chains if type(c['scores']) != int]
     if "srm" or "ld" in plot_hypers_filename:
         irm.experiments.plot_chains_hypers(f, chains, data)
+
+    f.savefig(plot_hypers_filename)
+
+@transform(get_results, suffix(".samples"), [".hypers_individual.pdf"])
+def plot_hypers(exp_results, (plot_hypers_filename,)):
+
+    sample_d = pickle.load(open(exp_results))
+    chains = sample_d['chains']
+    
+    exp = sample_d['exp']
+    data_filename = exp['data_filename']
+    data = pickle.load(open(data_filename))
+
+    f = pylab.figure(figsize= (12, 8))
+
+    
+    chains = [c for c in chains if type(c['scores']) != int]
+    if "srm" in plot_hypers_filename:
+        # this is sort of a gross hack
+        states = [c['state'] for c in chains]
+        mu_hps = [s['relations']['R1']['hps']['mu_hp'] for s in states]
+        ax = f.add_subplot(1, 3, 1)
+        ax.hist(mu_hps)
+        lambda_hps = [s['relations']['R1']['hps']['lambda_hp'] for s in states]
+        ax = f.add_subplot(1, 3, 2)
+        ax.hist(lambda_hps)
+
+        alpha_hps = [s['domains']['d1']['hps']['alpha'] for s in states]
+        ax = f.add_subplot(1, 3, 3)
+        ax.hist(alpha_hps)
+
 
     f.savefig(plot_hypers_filename)
 
@@ -1493,6 +1541,7 @@ if __name__ == "__main__":
                   compute_cluster_metrics, 
                   #compute_cluster_metrics_bb, 
                   merge_cluster_metrics,
+                  plot_data_raw, 
                   # data_retina_adj_count, 
               # create_inits, 
               # plot_scores_z, 
