@@ -601,6 +601,99 @@ def plot_best_cluster_latent(exp_results,
         # dont do the clist ones
         file(out_filename, 'w').write("test")
 
+@transform(get_results, suffix(".samples"), 
+           ".z.pdf")
+def plot_z_matrix(exp_results, 
+                  out_filename):
+    # debug
+    # fid = open(out_filename, 'w')
+    # fid.write("test")
+    # fid.close()
+    # return
+
+    sample_d = pickle.load(open(exp_results))
+    chains = sample_d['chains']
+    
+    exp = sample_d['exp']
+    data_filename = exp['data_filename']
+    data = pickle.load(open(data_filename))
+    data_basename, _ = os.path.splitext(data_filename)
+    meta = pickle.load(open(data_basename + ".meta"))
+
+    meta_infile = meta['infile']
+
+    d = pickle.load(open(meta_infile, 'r'))
+    conn = d['conn_mat']
+    cells = d['cells']
+
+    cell_types = cells['type_id']
+
+    chains = [c for c in chains if type(c['scores']) != int]
+    CHAINN = len(chains)
+
+    # compute the z matrix 
+    z_mat = np.zeros((len(cells), len(cells)))
+    for ci, c in enumerate(chains):
+        print "z for chain", ci
+        sample_latent = c['state']
+        cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
+        ca = irm.util.canonicalize_assignment(cell_assignment)
+        for u in np.unique(ca):
+            ent_i = np.argwhere(ca == u).flatten()
+            for ci in ent_i:
+                for cj in ent_i:
+                    z_mat[ci, cj] += 1
+
+    import scipy.cluster
+    l = scipy.cluster.hierarchy.linkage(z_mat, method='ward')
+    
+    
+    ca = np.array(scipy.cluster.hierarchy.leaves_list(l))
+    z_mat = z_mat[ca]
+    z_mat = z_mat[:, ca]
+
+
+    import matplotlib.gridspec as grd
+    f = pylab.figure()
+    gs = grd.GridSpec(1, 2, width_ratios=[1,6], wspace=0.02)
+    ax = f.add_subplot(gs[0, 1])
+    ax.imshow(z_mat, cmap=pylab.cm.Greys, interpolation='nearest')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title("Cell coassignment probability") 
+    ax.set_xlabel("cells")
+    ax = f.add_subplot(gs[0, 0])
+
+    cells['coarse'][cells['type_id'] == 58] = 'bc'
+    cmap = {None : 4, 
+            'other': 4, 
+            'nac' : 2, 
+            'bc' : 1, 
+            'mwac' : 3, 
+            'gc' : 0}
+    color_idx = [cmap[o] for o in cells['coarse']]        
+    import brewer2mpl
+    cmap = brewer2mpl.get_map('Set1', 'qualitative', 5).mpl_colormap
+    ax.scatter(cell_types, np.argsort(ca), edgecolor='none', 
+               s=3, 
+               c=color_idx, 
+               alpha=0.8,
+               cmap = cmap)
+    ax.set_xticks([12, 24, 57, 72])
+    ax.set_yticks([])
+    ax.set_xticklabels([])
+    ax.set_title("Type ID")
+    ax.set_ylabel("cells")
+
+    ax.grid()
+
+    # create colors
+    
+    ax.set_xlim(0, 80)
+    ax.set_ylim(950, 0)
+
+    f.savefig(out_filename)
+
 @transform(get_results, suffix(".samples"), [".hypers.pdf"])
 def plot_hypers(exp_results, (plot_hypers_filename,)):
 
@@ -686,6 +779,7 @@ def plot_circos_latent(exp_results,
     d = pickle.load(open(meta_infile, 'r'))
     conn = d['conn_mat']
     cells = d['cells']
+    cells['coarse'][cells['type_id'] == 58] = 'bc'
 
     cell_types = cells['type_id']
 
@@ -1408,6 +1502,7 @@ if __name__ == "__main__":
               # plot_params, 
               # create_latents_ld_truth, 
               # plot_circos_latent, 
+                  plot_z_matrix, 
                plot_clustered_somapos,
               #plot_cluster_vars, 
               #plot_cluster_aris, 

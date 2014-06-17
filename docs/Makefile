@@ -38,7 +38,7 @@ update_mouseretina:
 	cp ${MOUSERETINA_TGT}.latent.pdf ${MOUSERETINA_OUT}.latent.pdf
 	cp ${MOUSERETINA_TGT}.somapos.pdf ${MOUSERETINA_OUT}.somapos.pdf
 	python svg2ai.py ${MOUSERETINA_TGT}.circos.01.svg ${MOUSERETINA_OUT}.circos.ai ${MOUSERETINA_TGT}.circos.00.small.svg ${MOUSERETINA_OUT}.circos.00.small.ai ${MOUSERETINA_TGT}.circos.01.small.svg ${MOUSERETINA_OUT}.circos.01.small.ai ${MOUSERETINA_TGT}.circos.02.small.svg ${MOUSERETINA_OUT}.circos.02.small.ai 
-
+	cp ${MOUSERETINA_TGT}.z.pdf ${MOUSERETINA_OUT}.z.pdf
 dropbox:
 	cp -r * ~/Dropbox/jonaskording-connectomics 
 
