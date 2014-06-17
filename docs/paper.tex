@@ -1,4 +1,5 @@
-\documentclass{nature}
+%\documentclass{nature}
+\documentclass{article}
 \usepackage[english,american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
 \usepackage[disable]{todonotes}
@@ -44,16 +45,22 @@
 \end{small}
 
 \begin{abstract}
-  Connectomics produces massive amounts of data,
-  necessitating new analysis methods to discover the biological and
-  computational structure. It has long been assumed
-  that discovering neuron types and their relation to microcircuitry is crucial to
-  understanding neural function. Here we developed a nonparametric
-  Bayesian technique that identifies neuron types and microcircuitry
-  patterns in connectomics data. It combines the information traditionally used by biologists, including connectivity, cell body location and the spatial distribution of synapses.  We show that the approach recovers known neuron types in the retina and enables predictions of connectivity, better than simpler algorithms. It also can reveal interesting structure in
-  the nervous system of c. elegans, and automatically discovers the
-  structure of a microprocessor. 
- Our approach extracts structural meaning from connectomics, enabling new approaches of automatically deriving  anatomical insights from these emerging datasets.
+  Connectomics produces massive amounts of data, necessitating new
+  analysis methods to discover the biological and computational
+  structure. It has long been assumed that discovering neuron types
+  and their relation to microcircuitry is crucial to understanding
+  neural function. Here we developed a nonparametric Bayesian
+  technique that identifies neuron types and microcircuitry patterns
+  in connectomics data. It combines the information traditionally used
+  by biologists, including connectivity, cell body location and the
+  spatial distribution of synapses.  We show that the approach
+  recovers known neuron types in the retina and enables predictions of
+  connectivity, better than simpler algorithms. It also can reveal
+  interesting structure in the nervous system of c. elegans, and
+  automatically discovers the structure of a microprocessor.  Our
+  approach extracts structural meaning from connectomics, enabling new
+  approaches of automatically deriving anatomical insights from these
+  emerging datasets.
 \end{abstract}
 
 
@@ -254,8 +261,6 @@ types we find tend to reflect the known laminar distribution in the
 retina (fig~\ref{fig:mouseretina}c, middle ring), which is exciting as
 the algorithm did not actually use this type of information.
 
-
-
 The algorithm yields a separation of neurons into a smaller number of
 types than the fully granular listing of 71 types found by the
 original authors of the paper, although is still highly correlated
@@ -273,8 +278,8 @@ datasets, even closer agreement would be found.
 \begin{figure}
   \centering 
   \centerline{\includegraphics{comparison.ai}}
-  \caption{Comparison of the value of incorporating additional metadata 
-for the mouse retina connectome.}
+  \caption{a. Cell-cell assignment matrix reflecting the posterior distribution of clusterings found by our model. Large contiguous black areas are cells that were considered the same type in the majority of samples. b. The cells and their true types sorted to agree with the coassignment matrix. c. A comparison of the predictive accuracy (Area under the curve) for hand-labeled anatomical data, versus inclusion of additional sources of information. d. ) The spatial extent (in depth and area) of the types identified by humans and our various algorithmic approaches.}
+
 \label{fig:mouseretina_compare}
 \end{figure}
 
@@ -690,7 +695,7 @@ after running our markov chains for the appropriate amount of time?
 \todo{Add figure}
 \item \textbf{autocorrelation} For various summary statistics 
 of the latent space, after a certain amount of time 
-\todo{add figure}
+
 \end{itemize} 
 
 But importantly, regardless of whether our model over- or under-estimates the exact posterior variance about the network, we find points in the latent variable space that are both predictive \textit{and} parsimonious, largely agreeing with the human anatomists and predicting existing connections. 
@@ -897,6 +902,9 @@ The adjusted rand index (ARI) is a measure of the similarity of two
 different clusterings \autocite{Hubert1985} -- two identical clusters
 have an ARI of 1.0 while progressively more dissimilar clusters have
 lower ARIs, becoming negative as the clustering gets anti-correlated.
+
+\todo{Concerns about parameter sensitivity}
+\todo{How did we pick the best one we often show?} 
 
 
 \end{document}
