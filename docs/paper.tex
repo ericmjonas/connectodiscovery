@@ -1,6 +1,6 @@
 %\documentclass{nature}
 \documentclass{article}
-\usepackage[english,american]{babel}
+\usepackage[american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
 \usepackage{todonotes}
 \usepackage{grffile}
@@ -282,20 +282,39 @@ type. When we plot (fig~\ref{fig:mouseretina_compare}b) the
 anatomist-derived cell types along the left, we can see that each
 block consists of a roughly-homogeneous collection of types. 
 
-We evaluate our model along three sets of parameters: how
-closely does our clustering agree with neuroanatomists' knowledge? 
-Given two cells, how accurately can our model predict the link
-between them? And how closely does the spatial extent (within a layer)
-of our identified types agree with the known neuroanatomists. 
+We evaluate our model along three sets of parameters
+(Fig.\ref{fig:mouseretina_compare}): how closely does our clustering agree
+with neuroanatomists' knowledge?  Given two cells, how accurately can
+our model predict the link between them? And how closely does the
+spatial extent (within a layer) of our identified types agree with the
+known neuroanatomists.
 
+As a first measure we compare link prediction accuracy across the
+methods (Fig.\ref{fig:mouseretina_compare} B AUC, red).  We find that
+given the dataset many techniques allow for good link-predictive
+accuracy. All the methods allow decent link prediction with an AUC in
+the .9 range. However, our algorithm clearly outperforms the simple
+statistical models that only use connectivity.
 
-We find that given the dataset many techniques allow for good
-link-predictive accuracy but poor agreement with neuroanatomists. In
-fact, when we fit a version of our model fixing the clusterings given
-by neuroanatomists \todo{Add something here}. As we incorporate
-additional information beyond connectivity into our model (soma
-distance, soma depth, synapse density profile) we more closely
-approximate human clustering. 
+As a second measure we compare link prediction accuracy across the
+methods (Fig.\ref{fig:mouseretina_compare} B ARI, blue). We find that our
+algorithm far outperforms the controls. We also find that when it is
+based on more of the same information used by anatomists use then it
+gets better at agreeing with these anatomists. In particular, using
+connectivity, distance, synapse distribution and soma depth leads to
+the highest ARI. When using the available information the algorithm
+produces a good fit to human anatomist judgments.
+
+Finally we look at the spatial extent of the discovered types both
+within a layer and between layers (Fig.\ref{fig:mouseretina_compare}
+C). We see that, in the absence of distance information, mere
+connectivity information results in types which only span a small
+region of space -- essentially “local cliques”. Incorporation of
+distance information results in types which span the entire extent of
+the layer. The depth variance of all models continues to be
+substantially larger than that predicted by human anatomists -- future
+directions of work include attempting to more strongly encode this
+prior belief of laminarity.
 
 
 \begin{figure}
@@ -346,19 +365,19 @@ number of anterior ganglia.
     clusters. c.) Inter-cluster connectivity, showing the position of
     each cell along the body axis as well as the ``true'' cell type --
     both coarse (motor, sensory, and interneuron) as well as fine
-    (small text labels). a.) The clusters and connectivity versus
+    (small text labels). d.) The clusters and connectivity versus
     distance for connections between Gate and C1, Gate and C2, and C1
     and C2 terminals on a transistor. Red and teal types have a
     terminal pulled down to ground and mostly function as
     inverters. Purple class are clocked, stateful transistors, orange
-    control the ALU and yellow control the special data bus. b.) The
+    control the ALU and yellow control the special data bus. e.) The
     spatial distribution of the transistors in each cluster.}
   \label{fig:otherdata}
 \end{figure}
 
 Using both the chemical and electrical connectivity (see methods), we
 determined the underlying clusters explained by connectivity and
-distance (fig~\ref{fig:celegans}a). A superficial inspection of the results shows
+distance (fig~\ref{fig:otherdata}a). A superficial inspection of the results shows
 clustering into groups consisting roughly homogeneously of motor
 neurons, sensory neurons, and interneurons. Closer examination reveals
 agreement with the classifications originally outlined by Brenner in
@@ -393,7 +412,7 @@ the transistors in a classic microprocessor, the MOS Technology 6502
 common patterns of transistors when designing circuits, with each
 transistor having a ``type'' in the circuit. We identified a region of
 the processor with complex but known structure containing the primary
-8-bit registers X, Y, and S (fig~\ref{fig:mos6502}).
+8-bit registers X, Y, and S (fig~\ref{fig:otherdata}).
 
 Our algorithm identifies areas of spatial homogeneity that mirror the
 known structure in the underlying architectural circuit, segmenting
@@ -405,7 +424,7 @@ serving as inverters.  An additional identified type controls the
 behavior of the three registers of interest (X, Y, and S) with respect
 to the SB data bus, either allowing them to latch or drive data from
 the bus. The repeat patterns of spatial connectivity are visible in
-figure~\ref{fig:mos6502}a, showing the man-made horizontal and
+figure~\ref{fig:otherdata}a, showing the man-made horizontal and
 vertical layout of the same types of transistors.
 
 \section{Discussion}
@@ -458,12 +477,12 @@ for various neural systems. Future models could incorporate
 a wider variety of likelihood functions, or even learn the global
 functional form from the data. 
 
-There exist a range of previous approaches to the discovery of
-neural microcircuitry \todo{ xxx as many cites as possible}. These
-generally involve a great deal of manual labor and ad-hoc
-determination of what constitutes a “type” of cell -- to this day
-there are disagreements in the literature as to the “true” types in
-the mammalian retina. Much as phylogenomics has changed our
+There exist a range of previous approaches to the discovery of neural
+microcircuitry\autocite{Mountcastle1957, Douglas1991, Bartho2004,
+  Freund1998}.  These generally involve a great deal of manual labor
+and ad-hoc determination of what constitutes a “type” of cell -- to
+this day there are disagreements in the literature as to the “true”
+types in the mammalian retina. Much as phylogenomics has changed our
 understanding of animal ontologies, modern large scale data will allow
 the efficient unbiased discovery of cell types and circuits. The sheer
 amount of available data demands the introduction of algorithmic
@@ -508,7 +527,7 @@ promise to make the debates more data driven.
 For the basic link-distance model, we take as input a connectivity
 matrix $R$ defining the connections between cell $e_i$ and $e_j$, as
 well as a distance function $d(e_i, e_j)$ representing a (physical)
-distance between adjacent cells. \todo{Add the cell soma caveat?}  See
+distance between adjacent cells.  See
 the supplemental material for extension to multiple connectivity
 matrices. We assume there exist an unknown number $K$ of latent
 (unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
@@ -891,6 +910,9 @@ have an ARI of 1.0 while progressively more dissimilar clusters have
 lower ARIs, becoming negative as the clustering gets anti-correlated.
 
 \end{document}
+
+
+
 
 
 
