@@ -30,7 +30,7 @@ arxiv.pdf: paper.tex
 	export PATH=${OLDTEX}:$$PATH; pdflatex arxiv.tex
 
 arxiv.tar.gz: arxiv.pdf arxiv.tex
-	tar czvf arxiv.tar.gz arxiv.tex arxiv.bbl 00README.XXX `python getgraphics.py paper.tex` mos6502.clusters.pdf
+	tar czvf arxiv.tar.gz arxiv.tex arxiv.bbl 00README.XXX `python getgraphics.py paper.tex` 
 
 MOUSERETINA_TGT=../experiments/mouseretina/data/retina.1.srm_clist_xsoma.3.1.xyz.1.2.data-fixed_20_100-anneal_slow_1000
 MOUSERETINA_OUT=mouseretina/mouseretina_tgt
