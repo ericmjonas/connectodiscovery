@@ -630,8 +630,8 @@ def plot_z_matrix(exp_results,
 
     sample_d = pickle.load(open(exp_results))
     chains = sample_d['chains']
-    
     exp = sample_d['exp']
+    print "exp=", exp
     data_filename = exp['data_filename']
     data = pickle.load(open(data_filename))
     data_basename, _ = os.path.splitext(data_filename)
@@ -651,7 +651,6 @@ def plot_z_matrix(exp_results,
     # compute the z matrix 
     z_mat = np.zeros((len(cells), len(cells)))
     for ci, c in enumerate(chains):
-        print "z for chain", ci
         sample_latent = c['state']
         cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
         ca = irm.util.canonicalize_assignment(cell_assignment)
@@ -671,16 +670,19 @@ def plot_z_matrix(exp_results,
 
 
     import matplotlib.gridspec as grd
-    f = pylab.figure()
-    gs = grd.GridSpec(1, 2, width_ratios=[1,6], wspace=0.02)
-    ax = f.add_subplot(gs[0, 1])
-    ax.imshow(z_mat, cmap=pylab.cm.Greys, interpolation='nearest')
+    f = pylab.figure(figsize=(10, 6))
+    gs = grd.GridSpec(4, 3, width_ratios=[2, 2,10 ], wspace=0.02)
+    ax = f.add_subplot(gs[:, 2])
+    im = ax.imshow(z_mat/CHAINN, cmap=pylab.cm.Greys, interpolation='nearest')
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_title("Cell coassignment probability") 
     ax.set_xlabel("cells")
-    ax = f.add_subplot(gs[0, 0])
+    cbar_ax = f.add_axes([0.35, 0.2, 0.1, 0.02])
+    f.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=[0.0, 1.0])
 
+
+    typeax = f.add_subplot(gs[:, 1])
     cells['coarse'][cells['type_id'] == 58] = 'bc'
     cmap = {None : 4, 
             'other': 4, 
@@ -691,24 +693,65 @@ def plot_z_matrix(exp_results,
     color_idx = [cmap[o] for o in cells['coarse']]        
     import brewer2mpl
     cmap = brewer2mpl.get_map('Set1', 'qualitative', 5).mpl_colormap
-    ax.scatter(cell_types, np.argsort(ca), edgecolor='none', 
+    typeax.scatter(cell_types, np.argsort(ca), edgecolor='none', 
                s=3, 
                c=color_idx, 
                alpha=0.8,
                cmap = cmap)
-    ax.set_xticks([12, 24, 57, 72])
-    ax.set_yticks([])
-    ax.set_xticklabels([])
-    ax.set_title("Type ID")
-    ax.set_ylabel("cells")
+    typeax.set_xticks([12, 24, 57, 72])
+    typeax.set_yticks([])
+    typeax.set_xticklabels([])
+    typeax.set_title("Type ID")
+    typeax.set_ylabel("cells")
 
-    ax.grid()
+    typeax.grid()
 
     # create colors
     
-    ax.set_xlim(0, 80)
-    ax.set_ylim(950, 0)
+    typeax.set_xlim(0, 80)
+    typeax.set_ylim(950, 0)
 
+
+    con = sqlite3.connect(RETINA_DB)
+    MAX_CONTACT_AREA=5.0
+    area_thold_min = 0.1
+    
+    contacts_df = pandas.io.sql.read_frame("select * from contacts where area < %f and area > %f" % (MAX_CONTACT_AREA, area_thold_min), 
+                                           con, index_col='id')
+
+    contacts_df.head()
+
+
+    for i in range(4):
+        # pick points 
+        which_row = np.argsort(ca).flatten()
+        spos = [270, 580, 790, 930][i]
+        
+        #spos = np.argsort(ca).flatten()[spos]
+        cell_row = np.argwhere(which_row == spos)[0]
+        # np.argsort(ca).flatten()[spos]
+
+        cell_row = cells.irow(cell_row)
+        print cell_row
+        cell_id = cell_row.index.values[0]
+        print "cell_id=", cell_id
+        typeax.scatter([cell_row['type_id']], 
+                       [spos], c='k', s=20, edgecolor='k', 
+                       facecolor='none')
+
+        ax = f.add_subplot(gs[i, 0])
+        c = contacts_df[contacts_df['from_id'] ==cell_id]
+        ax.scatter(c['y'], c['x'], edgecolor='none', s=1, alpha=0.5, c='k')
+
+        ax.scatter(cell_row['y'], cell_row['x'], s=40, c='r', edgecolor='none')
+
+
+        ax.set_xlim(0, 120)
+        ax.set_ylim(130, 50)
+        ax.set_xticks([])
+        ax.set_yticks([])
+    print cells.head()
+        
     f.savefig(out_filename)
 
 @transform(get_results, suffix(".samples"), [".hypers.pdf"])
