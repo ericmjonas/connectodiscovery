@@ -670,19 +670,21 @@ def plot_z_matrix(exp_results,
 
 
     import matplotlib.gridspec as grd
-    f = pylab.figure(figsize=(10, 6))
-    gs = grd.GridSpec(4, 3, width_ratios=[2, 2,10 ], wspace=0.02)
-    ax = f.add_subplot(gs[:, 2])
+    f = pylab.figure(figsize=(8, 6))
+    gs = grd.GridSpec(1, 2, width_ratios=[2,10 ], wspace=0.02)
+    ax = f.add_subplot(gs[:, 1])
     im = ax.imshow(z_mat/CHAINN, cmap=pylab.cm.Greys, interpolation='nearest')
     ax.set_xticks([])
     ax.set_yticks([])
     ax.set_title("Cell coassignment probability") 
     ax.set_xlabel("cells")
-    cbar_ax = f.add_axes([0.35, 0.2, 0.1, 0.02])
+
+
+    cbar_ax = f.add_axes([0.30, 0.15, 0.1, 0.02])
     f.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=[0.0, 1.0])
 
 
-    typeax = f.add_subplot(gs[:, 1])
+    typeax = f.add_subplot(gs[:, 0])
     cells['coarse'][cells['type_id'] == 58] = 'bc'
     cmap = {None : 4, 
             'other': 4, 
@@ -698,12 +700,16 @@ def plot_z_matrix(exp_results,
                c=color_idx, 
                alpha=0.8,
                cmap = cmap)
-    typeax.set_xticks([12, 24, 57, 72])
+    p = np.array([0, 12, 24, 57, 72, 80])
+    typeax.set_xticks(p)
+    typeax.set_xticks(p[1:] - np.diff(p)/2. , minor=True)
     typeax.set_yticks([])
+    typeax.set_xticklabels(['gc', 'bc', 'nac', 'mwac', 'other'], minor=True,
+                           fontsize=8, rotation=90)
     typeax.set_xticklabels([])
-    typeax.set_title("Type ID")
-    typeax.set_ylabel("cells")
 
+    typeax.set_title("anatomist type (0-72)", fontsize=8)
+    typeax.set_ylabel("cells")
     typeax.grid()
 
     # create colors
@@ -712,46 +718,45 @@ def plot_z_matrix(exp_results,
     typeax.set_ylim(950, 0)
 
 
-    con = sqlite3.connect(RETINA_DB)
-    MAX_CONTACT_AREA=5.0
-    area_thold_min = 0.1
+    # con = sqlite3.connect(RETINA_DB)
+    # MAX_CONTACT_AREA=5.0
+    # area_thold_min = 0.1
     
-    contacts_df = pandas.io.sql.read_frame("select * from contacts where area < %f and area > %f" % (MAX_CONTACT_AREA, area_thold_min), 
-                                           con, index_col='id')
+    # contacts_df = pandas.io.sql.read_frame("select * from contacts where area < %f and area > %f" % (MAX_CONTACT_AREA, area_thold_min), 
+    #                                        con, index_col='id')
 
-    contacts_df.head()
+    # contacts_df.head()
 
 
-    for i in range(4):
-        # pick points 
-        which_row = np.argsort(ca).flatten()
-        spos = [270, 580, 790, 930][i]
+    # for i in range(4):
+    #     # pick points 
+    #     which_row = np.argsort(ca).flatten()
+    #     spos = [270, 580, 790, 930][i]
         
-        #spos = np.argsort(ca).flatten()[spos]
-        cell_row = np.argwhere(which_row == spos)[0]
-        # np.argsort(ca).flatten()[spos]
+    #     #spos = np.argsort(ca).flatten()[spos]
+    #     cell_row = np.argwhere(which_row == spos)[0]
+    #     # np.argsort(ca).flatten()[spos]
 
-        cell_row = cells.irow(cell_row)
-        print cell_row
-        cell_id = cell_row.index.values[0]
-        print "cell_id=", cell_id
-        typeax.scatter([cell_row['type_id']], 
-                       [spos], c='k', s=20, edgecolor='k', 
-                       facecolor='none')
+    #     cell_row = cells.irow(cell_row)
+    #     print cell_row
+    #     cell_id = cell_row.index.values[0]
+    #     print "cell_id=", cell_id
+    #     typeax.scatter([cell_row['type_id']], 
+    #                    [spos], c='k', s=20, edgecolor='k', 
+    #                    facecolor='none')
 
-        ax = f.add_subplot(gs[i, 0])
-        c = contacts_df[contacts_df['from_id'] ==cell_id]
-        ax.scatter(c['y'], c['x'], edgecolor='none', s=1, alpha=0.5, c='k')
+    #     ax = f.add_subplot(gs[i, 0])
+    #     c = contacts_df[contacts_df['from_id'] ==cell_id]
+    #     ax.scatter(c['y'], c['x'], edgecolor='none', s=1, alpha=0.5, c='k')
 
-        ax.scatter(cell_row['y'], cell_row['x'], s=40, c='r', edgecolor='none')
+    #     ax.scatter(cell_row['y'], cell_row['x'], s=40, c='r', edgecolor='none')
 
 
-        ax.set_xlim(0, 120)
-        ax.set_ylim(130, 50)
-        ax.set_xticks([])
-        ax.set_yticks([])
-    print cells.head()
-        
+    #     ax.set_xlim(0, 120)
+    #     ax.set_ylim(130, 50)
+    #     ax.set_xticks([])
+    #     ax.set_yticks([])
+    # print cells.head()
     f.savefig(out_filename)
 
 @transform(get_results, suffix(".samples"), [".hypers.pdf"])
