@@ -158,7 +158,7 @@ function of distance. }
 \label{fig:overview}
 \end{figure}
 
-\section{Results}
+\section*{Results}
 
 We build a structured probabilistic model which begins with the
 generic notion of a cell being a member of a single, unobserved type
@@ -228,7 +228,7 @@ correct structure.
 \label{fig:synthetic}
 \end{figure}
 
-\subsubsection{Learning types and circuitry in the retina}
+\subsubsection*{Learning types and circuitry in the retina}
 
 \begin{figure}
   \centering 
@@ -347,7 +347,7 @@ prior belief of laminarity.
 % Truth (fine): mean = 34.348443 std=7.567564
 % Truth (coarse): mean = 35.276636 std=2.372951
 
-\subsection{Recovering spatial connectivity in multiple graphs simultaneously}
+\subsection*{Recovering spatial connectivity in multiple graphs simultaneously}
 
 Having shown our model to work on the repeating tessellated, laminar structure of the mammilian retina, we then apply our model to a structurally very different connectome -- the whole body of a small roundworm: 
 \textit{Caenorhabditis elegans} is a model system in
@@ -406,7 +406,7 @@ connectivity and distance information, even when the organism exhibits
 substantially less spatial regularity than the retina.
 
 
-\subsection{Types and connectivity in artificial structures}
+\subsection*{Types and connectivity in artificial structures}
 \begin{figure}
   \centering 
   \centerline{\includegraphics[width=4in]{mos6502.ai}}
@@ -449,7 +449,7 @@ the bus. The repeat patterns of spatial connectivity are visible in
 figure~\ref{fig:mos6502}c, showing the man-made horizontal and
 vertical layout of the same types of transistors.
 
-\section{Discussion}
+\section*{Discussion}
 We have presented a machine learning technique that allows cell types
 and microcircuitry to be discovered from connectomics data.  We have
 shown its applicability to regularly structured laminar neural circuits like the retina, 
@@ -542,7 +542,7 @@ phylogenetics). Ultimately, computational approaches may help resolve the signif
 disagreements across human anatomists. 
 
 
-\subsection{Methods Summary}
+\subsection*{Methods Summary}
 
 For the basic link-distance model, we take as input a connectivity
 matrix $R$ defining the connections between cell $e_i$ and $e_j$, as
@@ -595,9 +595,9 @@ should be addressed to E.J.~(email: jonas@eecs.berkeley.edu).
 \end{itemize}
 
 \newpage
-\section{Methods }
+\section*{Methods }
 
-\subsection{Probabilistic Model}
+\subsection*{Probabilistic Model}
 
 Our model is a extension of the iSBM
 \autocite{Kemp2006a,Xu2006} to incorporate spatial relations between entities,
@@ -687,7 +687,7 @@ of $M$ Gaussian means $(\mu^g_{k,1}, \cdots, \mu^g_{k, M})$, and a
 mixture vector $\pi_k$.  This representation can thus model depth distributions of contact points that have up to three modes, an assumption that is well matched in the bulk of anatomical studies of cell-type dependent connectivity.
 
 
-\subsection{Inference} 
+\subsection*{Inference} 
 We perform posterior inference via Markov-chain Monte Carlo (MCMC),
 annealing on the global likelihood during the traditional burn-in
 phase. MCMC transition kernels for different parts of the state space
@@ -726,7 +726,7 @@ comparisons (including link probability and cluster accuracy) we use this full
 collection of samples from the posterior distribution to estimate the
 resulting statistics.
 
-\subsection{Link Prediction}
+\subsection*{Link Prediction}
 As a proxy for link-prediction accuracy we compute the probability of a link
 between two cells using each model, trained fully on the data. While this method
 is potentially prone to overfitting, the overfitting will be shared across models
@@ -735,7 +735,7 @@ which over-cluster the data. We use a full collection of posterior samples when
 computing the link probability, and then compute the area under the ROC curve for
 each. 
 
-\subsection{Model Comparison}
+\subsection*{Model Comparison}
 We compare our model with a standard network clustering model, the
 latent-position clustering model. This model assumes each cell belongs
 to one of K clusters, and each cluster is associated with a
@@ -748,7 +748,7 @@ model provides reasonable link predictive accuracy, the clusterings
 dramatically disagree with those from human anatomists.
 
 
-\subsection{Parameters}
+\subsection*{Parameters}
 
 Hierarchical generative models can be sensitive to hyperparameter
 settings, thus for most hyperparamters we perform inference. In cases
@@ -762,7 +762,7 @@ density profile mixture components. For the connectivity-distance-only
 model we actually perform inference over both $p_{max}$ and $p_{min}$.
 
 
-\subsubsection{Mixing of our Markov chains} 
+\subsubsection*{Mixing of our Markov chains} 
 Evaluating whether or not approximate inference methods, such as MCMC,
 produce samples which are valid approximations of the posterior
 distribution is an ongoing area of research in the computational
@@ -798,7 +798,7 @@ connections.
 \end{figure}
 
 
-\subsection {Mouse Retina}
+\subsection* {Mouse Retina}
 \label{supp:mouseretina}
 Dense serial electron microscopy of a $114\mu m \times 80 \mu m $ area
 in the mouse retina by \autocite{Helmstaedter2013} yielded a listing
@@ -814,7 +814,7 @@ between cells using the reconstructed soma centers, and used the
 Logistic-Distance spatial relation. Hyperprior griddings are shown in
 supplemental section \ref{supp:hyperpriors}.
 
-\subsection{C. elegans}
+\subsection*{C. elegans}
 
 We obtained the connectome of c. elegans from data published
 previously \autocite{Varshney2011}, and isolated the 279 nonpharyngeal
@@ -826,7 +826,7 @@ graph and the electrical network as undirected graph. We use the
 synapse counts with the logistic-distance poisson likelihood, scaling
 the counts by 4.0 to compensate for the Poisson's overdispersion.
 
-\subsection{Microprocessor}
+\subsection*{Microprocessor}
 We extracted the connection graph for the transistors in the MOS6502
 \autocite{visual6502source}. Each transistor has three terminals (gate,
 source, drain), but the methods of the original dataset were unable to
@@ -847,9 +847,9 @@ $e_j$ are connected via pins $g$ and $c_1$.
 % should be addressed to A.B.C.~(email: myaddress@nowhere.edu).
 % \end{addendum}
 \newpage
-\section{Supplemental Material}
+\section*{Supplemental Material}
 
-\subsection{Other Likelihoods}
+\subsection*{Other Likelihoods}
 \label{supp:otherlikelihoods}
 
 We reparameterized the Logistic-Distance Bernoulli likelihood to
@@ -878,7 +878,7 @@ R(e_i, e_j) \sim \textrm{Poisson}(c | r)
 
 where $\lambda$ and $r_{min}$ are per-graph parameters. Per-component parameters $\mu_{mn} \sim \exp(\mu | \mu^{hp})$ and $r_{mn} \sim \exp(r_{mn} | r_{scale}^{hp})$. 
 
-\subsection{Source code and data}
+\subsection*{Source code and data}
 
 All source code and materials for running experiments can be
 obtained from the project website, at \\
@@ -894,7 +894,7 @@ All preprocessed data has been made publicaly available as well.
 
 Please contact the author for pre-publication access. 
 
-\subsection{Extension to multiple graphs}
+\subsection*{Extension to multiple graphs}
 \label{supp:multigraph}
 The model can handle multiple graphs $R^q$ simultaneously with a shared clustering by extending the likelihood to include the product of the likelihoods of the individual graphs. 
 
@@ -903,7 +903,7 @@ The model can handle multiple graphs $R^q$ simultaneously with a shared clusteri
 \end{equation}
 
 \FloatBarrier
-\subsection{Hyperprior grids and hyperprior inference}
+\subsection*{Hyperprior grids and hyperprior inference}
 \label{supp:hyperpriors}
 
 For the mouse retina Logistic-Distance Bernoulli model, we gridded
@@ -922,7 +922,7 @@ points between 10 and 500 and set $\lambda=\mu_{hp}/10$. $p_{min} \in
 \{0.001, 0.01, 0.02\}$ and both $p_\alpha$ and $p_\beta \in \{0.1,
 1.0, 2.0\}$.
 
-\section{Measuring clustering similarity}
+\section*{Measuring clustering similarity}
 
 The adjusted rand index (ARI) is a measure of the similarity of two
 different clusterings \autocite{Hubert1985} -- two identical clusters
