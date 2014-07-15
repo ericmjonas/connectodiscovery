@@ -1,7 +1,7 @@
 
 OLDTEX=/usr/local/texlive/2011/bin/universal-darwin/
 
-all: getbib paper.pdf
+all: getbib paper.pdf paper-main.pdf paper-supplemental.pdf
 
 clean:
 	rm paper.pdf paper.bcf paper.blg paper.aux paper.bbl paper.log paper.out paper.run.xml arxiv.pdf arxiv.bcf arxiv.blg arxiv.aux arxiv.bbl arxiv.log
@@ -46,3 +46,9 @@ debug: paper.pdf
 	biber paper | grep "didn't" 
 	grep "LaTeX Warning" paper.log
 
+
+paper-main.pdf: paper.pdf
+	pdftk paper.pdf cat 1-13 output paper-main.pdf
+
+paper-supplemental.pdf: paper.pdf
+	pdftk paper.pdf cat 14-19 output paper-supplemental.pdf
