@@ -355,9 +355,6 @@ def create_data_latent(infile, (data_filename, latent_filename,
     
     model_name = "LogisticDistance"
     latent, data = irm.irmio.default_graph_init(conn_and_dist, model_name)
-    data['relations']['R1']['observed'] = np.ones(conn_and_dist.shape)
-    data['relations']['R1']['observed'][:, :] = np.random.rand(conn_and_dist.shape[0],
-                                            conn_and_dist.shape[1]) < 0.5
     latent['domains']['d1']['assignment'] = nodes_with_meta['class']
     
     mulamb = 10.0
@@ -534,6 +531,8 @@ def get_results(exp_wait, exp_results):
     # reorg on a per-seed basis
     for jid in d['jids']:
         job = multyvac.get(jid)
+        job.wait()
+        
         print "getting", jid, job.status
         if job.status == 'done':
             chain_data = job.get_result()
