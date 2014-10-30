@@ -92,8 +92,8 @@ def get_dataset(data_name):
     return glob.glob(td("%s.data" %  data_name))
 
 EXPERIMENTS = [
-    #('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
-    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
+    #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
@@ -491,7 +491,7 @@ def experiment_generator():
         print "data filename =", data_filename
         df = "%s-%s-%s-%s" % (data_name, cv_config_name, init_config_name, kernel_config_name)
         
-        out_files = [df + x for x in [ ".samples",
+        out_files = [td(df + x) for x in [ ".samples",
                                        ".cvdata", ".inits"]]
         
         yield data_filename, out_files, cv_config_name, init_config_name, kernel_config_name

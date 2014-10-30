@@ -1,0 +1,27 @@
+stty -ixon
+
+~/spark/bin/spark-submit driver.py
+
+--conf spark.executorEnv.TESTVAR=foooo
+
+OK the horrible hell we've woken up to is
+
+rsync working directory to remote machine OR git pull remote machine
+whatever
+
+The driver script init is going to be... intense
+
+SPARK_DRIVER_MEMORY=4g ~/projects/sparktest/src/spark-1.1.0-bin-cdh4/bin/spark-submit  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000  --conf spark.executor.memory=4g --conf spark.python.worker.memory=4g --master local[2] sparkpipeline.py
+
+
+~/Spark/bin/spark-submit --conf spark.executorEnv.PYTHONPATH=`pwd`
+
+
+To install in ami:
+colorbrewer
+ruffus
+
+
+TODO:
+how the hell do we actually put the creds on the server in the environment?
+
