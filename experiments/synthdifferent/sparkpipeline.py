@@ -32,7 +32,7 @@ import util
 from irm import rand
 import predutil
 import boto
-from pyspark import SparkContext
+from pyspark import SparkContext, StorageLevel
 
 
 # def saveAsPickleFile(obj, tgtdir, overwrite=True):
@@ -71,7 +71,7 @@ def to_f32(x):
     assert type(a) == np.ndarray
     return a
 
-DEFAULT_CORES = 8
+DEFAULT_CORES = 4
 DEFAULT_RELATION = "ParRelation"
 WORKING_DIR = "sparkdata"
 S3_BUCKET = "jonas-testbucket2"
@@ -92,8 +92,8 @@ def get_dataset(data_name):
     return glob.glob(td("%s.data" %  data_name))
 
 EXPERIMENTS = [
-    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
-    #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    #('srm', 'cv_nfold_10', 'debug_2_100', 'debug_20'), 
+    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
@@ -510,7 +510,7 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
     true_latent = pickle.load(open(latent_filename))
     meta = pickle.load(open(meta_filename))
     
-    sc = SparkContext()
+    sc = SparkContext(batchSize=1)
     
     data_broadcast = sc.broadcast(data)
     cv_config = CV_CONFIGS[cv_config_name]
@@ -522,9 +522,9 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
         """ 
         returns key, (data, meta)
         """
-        cv_key = "%s.%d" % (cv_config_name, cv_i)
-        return cv_key, create_cv_pure(data, meta, cv_i,
-                                      cv_config_name, cv_config)
+        cv_key = "%s.%d.%d" % (cv_config_name, cv_i, np.random.randint(0, 1<<30))
+        return create_cv_pure(data_broadcast.value, meta, cv_i,
+                              cv_config_name, cv_config)
 
     
     cv_data_rdd = sc.parallelize(range(CV_N), 
@@ -534,18 +534,22 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
         """
         returns latent
         """
-
-        return create_init_pure(true_latent, data, INIT_N, init['config'])
+        results = []
+        for li, latent in enumerate(create_init_pure(true_latent, data, INIT_N, init['config'])):
+            results.append((time.time() + np.random.rand(), 
+                            (data, meta, latent)))
+        return results
         
-    init_latents_rdd  = cv_data_rdd.flatMapValues(create_init_flat)
-    def inference(((data, meta), init)):
+    init_latents_rdd  = cv_data_rdd.flatMap(create_init_flat).repartition(CV_N*INIT_N).cache()
+    print "THERE ARE", init_latents_rdd.count(), "ITEMS IN THIS RDD" 
+
+    def inference((dumbkey, (data, meta, init))):
 
         return run_exp_pure(data, init, kernel_config_name, 0)
        # FIXME do we care about this seed? 
         
-    joined = cv_data_rdd.leftOuterJoin(init_latents_rdd)
-    print "THERE ARE", joined.getNumPartitions(), "partitions" 
-    results = joined.mapValues(inference)
+    
+    results = init_latents_rdd.map(inference)
 
 
     for rdd, name in [(results, out_samples),
