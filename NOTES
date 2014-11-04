@@ -25,3 +25,5 @@ ruffus
 TODO:
 how the hell do we actually put the creds on the server in the environment?
 
+~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=4g --conf spark.task.cpus=4 --py-files=/data/netmotifs.egg sparkpipeline.py
+

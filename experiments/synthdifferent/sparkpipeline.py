@@ -92,11 +92,11 @@ def get_dataset(data_name):
     return glob.glob(td("%s.data" %  data_name))
 
 EXPERIMENTS = [
-    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
-    #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    #('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
+    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     # ('lpcm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
     # ('mm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
 
@@ -510,7 +510,7 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
     true_latent = pickle.load(open(latent_filename))
     meta = pickle.load(open(meta_filename))
     
-    sc = SparkContext()
+    sc = SparkContext(batchSize=1)
     
     data_broadcast = sc.broadcast(data)
     cv_config = CV_CONFIGS[cv_config_name]
@@ -523,27 +523,31 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
         returns key, (data, meta)
         """
         cv_key = "%s.%d" % (cv_config_name, cv_i)
-        return cv_key, create_cv_pure(data, meta, cv_i,
+        return cv_key, create_cv_pure(data, #_broadcast.value, 
+                                      meta, cv_i,
                                       cv_config_name, cv_config)
 
     
     cv_data_rdd = sc.parallelize(range(CV_N), 
                                  CV_N).map(cv).cache()
     
-    def create_init_flat((data, meta)):
+    def create_init_flat((key, (data, meta))):
         """
         returns latent
         """
+        res = []
+        for latent_i, latent in enumerate( create_init_pure(true_latent, data, INIT_N, init['config'])):
+            yield "%s.%s" % (key, latent_i), (data, meta, latent)
 
-        return create_init_pure(true_latent, data, INIT_N, init['config'])
-        
-    init_latents_rdd  = cv_data_rdd.flatMapValues(create_init_flat)
-    def inference(((data, meta), init)):
+
+    init_latents_rdd  = cv_data_rdd.flatMap(create_init_flat)
+
+    def inference((data, meta, init)):
 
         return run_exp_pure(data, init, kernel_config_name, 0)
        # FIXME do we care about this seed? 
         
-    joined = cv_data_rdd.leftOuterJoin(init_latents_rdd)
+    joined = init_latents_rdd.repartition(CV_N*INIT_N).cache()
     print "THERE ARE", joined.getNumPartitions(), "partitions" 
     results = joined.mapValues(inference)
 
@@ -602,6 +606,7 @@ def inference_run(data, latent,
         
     return scores, chain_runner.get_state(), times, latents
 
+
 def run_exp_pure(data, init, kernel_config_name, seed):
     # put the filenames in the data
 
@@ -628,6 +633,8 @@ def run_exp_pure(data, init, kernel_config_name, seed):
             'res' : res, 
             'kernel_config_name' : kernel_config_name}
 
+
+
 @transform(spark_run_experiments, suffix('.samples'), '.samples.pickle')
 def get_samples((exp_samples, exp_cvdata, exp_inits), out_filename):
     sample_metadata = pickle.load(open(exp_samples, 'r'))
@@ -637,6 +644,16 @@ def get_samples((exp_samples, exp_cvdata, exp_inits), out_filename):
 
     save_rdd_elements(results_rdd, out_filename)
     
+    sc.stop()
+
+@transform(spark_run_experiments, suffix('.samples'), '.cvdata.pickle')
+def get_cvdata((exp_samples, exp_cvdata, exp_inits), out_filename):
+    sample_metadata = pickle.load(open(exp_samples, 'r'))
+    
+    sc = SparkContext()
+    results_rdd = sc.pickleFile(sample_metadata['url'])
+    pickle.dump(results_rdd.collect(),
+                open(out_filename, 'w'))
     sc.stop()
 
 def save_rdd_elements(rdd, filename_base):
@@ -680,22 +697,168 @@ def save_rdd_elements(rdd, filename_base):
     pickle.dump(outfiles, 
                 open(filename_base, 'w'))
 
-    
-@transform(spark_run_experiments, suffix('.samples'), '.cvdata.pickle')
-def get_cvdata((exp_samples, exp_cvdata, exp_inits), out_filename):
-    sample_metadata = pickle.load(open(exp_samples, 'r'))
-    
-    sc = SparkContext()
-    results_rdd = sc.pickleFile(sample_metadata['url'])
-    pickle.dump(results_rdd.collect(),
-                open(out_filename, 'w'))
 
+@follows(get_samples)
+@collate("sparkdata/*.cv.*.samples",
+         regex(r"data/(.+)-(.+).(\d\d)(.cv.*).samples"),
+         [td(r"\1-\2\4.predlinks"), td(r"\1-\2\4.assign")])
+def cv_collate_predlinks_assign(infiles_samples, (predlinks_outfile,
+                                               assign_outfile)):
+    """
+    aggregate across samples and cross-validations
+    """
+    s = infiles_samples[0].split('-')
+
+    input_basename = s[0]
+    input_data = pickle.load(open(input_basename + ".data"))
+    input_latent = pickle.load(open(input_basename + ".latent"))
+    data_conn = input_data['relations']['R1']['data']
+    model_name= input_data['relations']['R1']['model']
+    N = len(data_conn)
+
+    true_assign = input_latent['domains']['d1']['assignment']
+    print "for", input_basename, "there are", len(np.unique(true_assign)), "classes"
+    if model_name == "BetaBernoulliNonConj":
+        truth_mat = data_conn
+    elif model_name == "LogisticDistance":
+        truth_mat = data_conn['link']
+        # truth_mat_t_idx = np.argwhere(truth_mat.flatten() > 0).flatten()
+
+    predlinks_outputs = []
+    assignments_outputs = []
+
+    for sample_name in infiles_samples:
+        # this loop runs once per cross-validated dataset
+        
+        samples = pickle.load(open(sample_name, 'r'))
+        
+        N = len(data_conn)
+
+        # GET THE CROSSVALIDATED DATA
+        s = sample_name.split('-')
+
+        cv_name = s[0] + "-" + s[1]
+        cv_data = pickle.load(open(cv_name, 'r'))
+
+        # get the cv idx for later use
+        cv_idx = int(s[1][-10:-8])
+        
+        # FIGURE OUT WHICH ENTRIES WERE MISSING
+        heldout_idx = np.argwhere((cv_data['relations']['R1']['observed'].flatten() == 0)).flatten()
+        heldout_true_vals = truth_mat.flatten()[heldout_idx]
+        
+        heldout_true_vals_t_idx = np.argwhere(heldout_true_vals > 0).flatten()
+        heldout_true_vals_f_idx = np.argwhere(heldout_true_vals == 0).flatten()
+        chain_n = 0
+
+        for chain_i, chain in enumerate(samples['chains']):
+            if type(chain['scores']) != int:
+                irm_latent_samp = chain['state']
+
+                # compute full prediction matrix 
+                pred = predutil.compute_prob_matrix(irm_latent_samp, input_data, 
+                                                    model_name)
+                pf_heldout = pred.flatten()[heldout_idx]
+
+                for pred_thold  in PRED_EVALS:
+                    pm = pf_heldout[heldout_true_vals_t_idx]
+                    t_t = np.sum(pm >=  pred_thold)
+                    t_f = np.sum(pm <= pred_thold)
+                    pm = pf_heldout[heldout_true_vals_f_idx]
+                    f_t = np.sum(pm >= pred_thold)
+                    f_f = np.sum(pm <= pred_thold)
+                    predlinks_outputs.append({'chain_i' : chain_i, 
+                                            'score' : chain['scores'][-1], 
+                                              'pred_thold' : pred_thold,
+                                              'cv_idx' : cv_idx, 
+                                              't_t' : t_t, 
+                                              't_f' : t_f, 
+                                              'f_t' : f_t, 
+                                              'f_f' : f_f, 
+                                              't_tot' : len(heldout_true_vals_t_idx), 
+                                              'f_tot' : len(heldout_true_vals_f_idx)
+                                          })
+                assignments_outputs.append({'chain_i' : chain_i,
+                                            'score' : chain['scores'][-1],
+                                            'cv_idx' : cv_idx, 
+                                            'true_assign' : true_assign,
+                                            'assign' : irm_latent_samp['domains']['d1']['assignment']})
+                                            
+
+
+    predlinks_df = pandas.DataFrame(predlinks_outputs)
+    pickle.dump({'df' : predlinks_df}, 
+                 open(predlinks_outfile, 'w'))
+
+    a_df = pandas.DataFrame(assignments_outputs)
+    pickle.dump({'df' : a_df}, 
+                 open(assign_outfile, 'w'))
+
+    
+@transform(cv_collate_predlinks_assign, suffix(".predlinks"), ".roc.pdf")
+def plot_predlinks_roc(infile, outfile):
+    preddf = pickle.load(open(infile[0], 'r'))['df']
+    preddf['tp'] = preddf['t_t'] / preddf['t_tot']
+    preddf['fp'] = preddf['f_t'] / preddf['f_tot']
+    preddf['frac_wrong'] = 1.0 - (preddf['t_t'] + preddf['f_f']) / (preddf['t_tot'] + preddf['f_tot'])
+
+    f = pylab.figure(figsize=(4, 4))
+    ax = f.add_subplot(1, 1, 1)
+    
+    # group by cv set
+    for row_name, cv_df in preddf.groupby('cv_idx'):
+        print "PLOTTING", row_name
+        cv_df = cv_df.sort('fp')
+        ax.plot(cv_df['fp'], cv_df['tp'], c='k', alpha=0.5)
+
+    fname = infile[0].split('-')[0]
+    ax.set_title(fname)
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    f.savefig(outfile)
+
+
+
+@transform(cv_collate_predlinks_assign, suffix(".predlinks"), ".ari.pdf")
+def plot_ari(infile, outfile):
+    assigndf = pickle.load(open(infile[1], 'r'))['df']
+    print assigndf
+    
+    assigndf['ari'] = assigndf.apply(lambda x : metrics.adjusted_rand_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+
+    
+    f = pylab.figure(figsize=(4, 4))
+    ax = f.add_subplot(1, 1, 1)
+    
+    # # group by cv set
+    # for row_name, cv_df in preddf.groupby('cv_idx'):
+    #     print "PLOTTING", row_name
+    #     cv_df = cv_df.sort('fp')
+    #     ax.plot(cv_df['fp'], cv_df['tp'])
+    bins = np.linspace(0, 1.0, 11)
+    ax.hist(assigndf['ari'], bins, normed=True)
+
+    fname = infile[0].split('-')[0]
+    ax.set_title(fname)
+
+    ax.set_xlim(0, 1)
+    f.savefig(outfile)
+
+@follows(get_samples)
+@transform(get_samples, suffix(".samples.pickle"), ".samples.organized.pickle")
+def samples_organize(infile, outfile):
+    associated_files_list = pickle.load(open(infile, 'r'))
+    for f in associated_files_list:
+        a = pickle.load(open(f, 'r'))
+        print infile, a[0]
+        
         
 if __name__ == "__main__":
     pipeline_run([create_data_latent,
                   spark_run_experiments,
                   get_samples,
-                  #get_cvdata
+                  samples_organize,
+                  get_cvdata
                   # create_inits,
                   # get_results,
                   # cv_collate, 
