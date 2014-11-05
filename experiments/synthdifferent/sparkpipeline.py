@@ -97,10 +97,10 @@ def get_dataset(data_name):
 EXPERIMENTS = [
     ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
     #('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
-    #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     # ('lpcm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
     # ('mm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
 
@@ -933,6 +933,6 @@ if __name__ == "__main__":
                   plot_predlinks_roc,
                   plot_ari, 
                   # plot_circos_latent,
-              ]) # , touch_files_only=True)
+              ])
     
     
