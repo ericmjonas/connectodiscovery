@@ -36,6 +36,7 @@ from irm import rand
 import predutil
 import boto
 from pyspark import SparkContext
+import cvpipelineutil as cv
 
 
 # def saveAsPickleFile(obj, tgtdir, overwrite=True):
@@ -394,22 +395,10 @@ def create_data_latent(infile, (data_filename, latent_filename,
 
 
     
-def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS):
-    for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-        data_filename = get_dataset(data_name)[0]
-
-        df = "%s-%s-%s-%s" % (data_name, cv_config_name, init_config_name, kernel_config_name)
-        
-        out_files = [td(df + x) for x in [ ".samples",
-                                       ".cvdata", ".inits"]]
-        init_config = INIT_CONFIGS[init_config_name]
-        cv_config = CV_CONFIGS[cv_config_name]
-        
-        yield data_filename, out_files, cv_config_name, init_config_name, kernel_config_name, init_config, cv_config
 
         
 @follows(create_data_latent)
-@files(list(experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS)))
+@files(list(cv.experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS)))
 def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits), 
                           cv_config_name, init_config_name, kernel_config_name,
                           init_config, cv_config):
@@ -716,6 +705,7 @@ def plot_ari(infile, outfile):
     f.savefig(outfile)
 
 if __name__ == "__main__":
+    print pipeline_main
     pipeline_run([create_data_latent,
                   spark_run_experiments,
                   get_samples,

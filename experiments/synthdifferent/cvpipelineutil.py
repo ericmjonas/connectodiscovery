@@ -221,3 +221,16 @@ def s3n_url(f):
     url =  "s3n://" + os.path.join(S3_BUCKET, S3_PATH, f)
     print url
     return url
+
+def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS):
+    for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
+        data_filename = get_dataset(data_name)[0]
+
+        df = "%s-%s-%s-%s" % (data_name, cv_config_name, init_config_name, kernel_config_name)
+        
+        out_files = [td(df + x) for x in [ ".samples",
+                                       ".cvdata", ".inits"]]
+        init_config = INIT_CONFIGS[init_config_name]
+        cv_config = CV_CONFIGS[cv_config_name]
+        
+        yield data_filename, out_files, cv_config_name, init_config_name, kernel_config_name, init_config, cv_config
