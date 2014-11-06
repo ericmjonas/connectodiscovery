@@ -1,5 +1,10 @@
 import numpy as np
+import copy
+import irm
+import time 
 
+DEFAULT_CORES = 8
+DEFAULT_RELATION = "ParRelation"
 
 def create_cv_pure(data, meta, 
                    cv_i, cv_config_name, cv_config):
@@ -30,6 +35,7 @@ def create_cv_pure(data, meta,
                   'cv_config_name' : cv_config_name}
     
     return (data, meta)
+
 
 
 def create_init_pure(irm_latent, irm_data, OUT_N, 
@@ -125,10 +131,9 @@ def inference_run(data, latent,
     return scores, chain_runner.get_state(), times, latents
 
 
-def run_exp_pure(data, init, kernel_config_name, seed):
+def run_exp_pure(data, init, kernel_config_name, seed, kc):
     # put the filenames in the data
 
-    kc = KERNEL_CONFIGS[kernel_config_name]
     ITERS = kc['ITERS']
     kernel_config = kc['kernels']
     fixed_k = kc.get('fixed_k', False)
@@ -153,74 +158,74 @@ def run_exp_pure(data, init, kernel_config_name, seed):
 
 
         
-def save_rdd_elements(rdd, filename_base):
-    """
-    save each element of the rdd in filename_base + .nnn on the 
-    local disk
+# def save_rdd_elements(rdd, filename_base):
+#     """
+#     save each element of the rdd in filename_base + .nnn on the 
+#     local disk
 
-    FIXME: This is really just a staging area to get around
-    instantiating the entire rdd in memory
+#     FIXME: This is really just a staging area to get around
+#     instantiating the entire rdd in memory
 
-    """
-    raise Exception("Use common files")
-    conn = boto.connect_s3()
-    bucket = conn.get_bucket(S3_BUCKET)
-    key_name_base = filename_base
+#     """
+#     raise Exception("Use common files")
+#     conn = boto.connect_s3()
+#     bucket = conn.get_bucket(S3_BUCKET)
+#     key_name_base = filename_base
 
-    def create_key_name(index):
-        return S3_PATH + key_name_base + (".%08d" %  index)
+#     def create_key_name(index):
+#         return S3_PATH + key_name_base + (".%08d" %  index)
 
-    def save_s3((obj, index)):
-        a = pickle.dumps(obj)
-        k = boto.s3.key.Key(bucket)
-        k.key = create_key_name(index)
-        k.set_contents_from_string(a)
+#     def save_s3((obj, index)):
+#         a = pickle.dumps(obj)
+#         k = boto.s3.key.Key(bucket)
+#         k.key = create_key_name(index)
+#         k.set_contents_from_string(a)
     
 
-    # materialize, save
-    SIZE_OF_RDD = rdd.count()
-    rdd.zipWithIndex().foreach(save_s3)
+#     # materialize, save
+#     SIZE_OF_RDD = rdd.count()
+#     rdd.zipWithIndex().foreach(save_s3)
 
 
-    # now redownload
-    outfiles = []
-    for i in range(SIZE_OF_RDD):
-        key = bucket.new_key(create_key_name(i))
-        contents = key.get_contents_as_string()
-        filename = filename_base + (".%03d" % i)
-        outfiles.append(filename)
+#     # now redownload
+#     outfiles = []
+#     for i in range(SIZE_OF_RDD):
+#         key = bucket.new_key(create_key_name(i))
+#         contents = key.get_contents_as_string()
+#         filename = filename_base + (".%03d" % i)
+#         outfiles.append(filename)
         
-        key.get_contents_to_filename(filename)
+#         key.get_contents_to_filename(filename)
     
-    pickle.dump(outfiles, 
-                open(filename_base, 'w'))
+#     pickle.dump(outfiles, 
+#                 open(filename_base, 'w'))
 
 
-def s3n_delete(url):
-    raise Exception("Use common files")
-    conn = boto.connect_s3()
+# def s3n_delete(url):
+#     raise Exception("Use common files")
+#     conn = boto.connect_s3()
 
-    bucket_name = url[6:].split("/")[0]
-    bucket = conn.get_bucket(bucket_name)
+#     bucket_name = url[6:].split("/")[0]
+#     bucket = conn.get_bucket(bucket_name)
     
-    path = url[6 + 1 + len(bucket_name):]
+#     path = url[6 + 1 + len(bucket_name):]
                
-    delete_key_list = []
-    for key in bucket.list(prefix=path):
-        delete_key_list.append(key)
-        if len(delete_key_list) > 100:
-            bucket.delete_keys(delete_key_list)
-            delete_key_list = []
+#     delete_key_list = []
+#     for key in bucket.list(prefix=path):
+#         delete_key_list.append(key)
+#         if len(delete_key_list) > 100:
+#             bucket.delete_keys(delete_key_list)
+#             delete_key_list = []
 
-    if len(delete_key_list) > 0:
-        bucket.delete_keys(delete_key_list)        
+#     if len(delete_key_list) > 0:
+#         bucket.delete_keys(delete_key_list)        
 
-def s3n_url(f):
-    raise Exception("Use common files")
+# def s3n_url(f):
+#     raise Exception("Use common files")
     
-    url =  "s3n://" + os.path.join(S3_BUCKET, S3_PATH, f)
-    print url
-    return url
+#     url =  "s3n://" + os.path.join(S3_BUCKET, S3_PATH, f)
+#     print url
+#     return url
 
 def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td):
     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
@@ -234,3 +239,5 @@ def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td)
         cv_config = CV_CONFIGS[cv_config_name]
         
         yield data_filename, out_files, cv_config_name, init_config_name, kernel_config_name, init_config, cv_config
+
+        

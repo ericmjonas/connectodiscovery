@@ -3,6 +3,8 @@
 import sys
 # total hack, I should really know better
 sys.path.append("../../code")
+import matplotlib
+matplotlib.use('Agg')
 
 from ruffus import *
 import cPickle as pickle
@@ -29,6 +31,12 @@ import irm.data
 import util
 from irm import rand
 
+import predutil
+import boto
+from pyspark import SparkContext
+import cvpipelineutil as cv
+import sparkutil
+
 
 
 def dist(a, b):
@@ -40,31 +48,20 @@ def to_f32(x):
     assert type(a) == np.ndarray
     return a
 
-
-VOLUME_NAME = "connattrib_paper_mouseretina_cv"
-MULTYVAC_LAYER = "test11"
 DEFAULT_CORES = 8
 DEFAULT_RELATION = "ParRelation"
-WORKING_DIR = "datacv"
-
-
-@files(None, "volume.%s.sentinel" % VOLUME_NAME)
-def create_volume(infile, outfile):
-    multyvac.volume.create(VOLUME_NAME, '/%s' % VOLUME_NAME)
-    vol = multyvac.volume.get(VOLUME_NAME) 
-    fname = "%s/dir.setinel" % WORKING_DIR
-    fid = file(fname, 'w')
-    fid.write("test")
-    fid.close()
-    vol.put_file(fname, fname)
-   
-    open(outfile, 'w').write("done\n")
+WORKING_DIR = "sparkdatacv"
+S3_BUCKET = "jonas-testbucket2"
+S3_PATH= "netmotifs/paper/experiments/mouseretina"
 
 
 RETINA_DB = "../../../preprocess/mouseretina/mouseretina.db"
 
 CV_CONFIGS = {'cv_nfold_10' : {'N' : 10,
+                               'type' : 'nfold'},
+              'cv_nfold_2' : {'N' : 2,
                               'type' : 'nfold'}}
+
 
 
 
@@ -72,7 +69,7 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 EXPERIMENTS = [
-    ('retina.0.ld.0.0.xyz', 'cv_nfold_10', 'debug_2_100', 'debug_20'), 
+    ('retina.0.ld.0.0.xyz', 'cv_nfold_1', 'debug_2_100', 'debug_2'), 
 
 
     # ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_1000'), 
@@ -180,8 +177,8 @@ slow_anneal[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = None  # soma_x_hp_
 KERNEL_CONFIGS = {
     'anneal_slow_1000' : {'ITERS' : 1000, 
                          'kernels' : slow_anneal},
-    'debug_20' : {'ITERS' : 20, 
-                  'kernels': irm.runner.default_kernel_anneal(1.0, 20)
+    'debug_2' : {'ITERS' : 2, 
+                  'kernels': irm.runner.default_kernel_anneal(1.0, 2)
               }
     }
 
@@ -460,189 +457,443 @@ def create_latents_srm_clist_xsoma(infile,
 def get_dataset(data_name):
     return glob.glob(td("%s.data" %  data_name))
 
-def init_generator():
-    for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-        for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
-            name, _ = os.path.splitext(data_filename)
+# def init_generator():
+#     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
+#         for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
+#             name, _ = os.path.splitext(data_filename)
 
-            # now generate one of these for every single cv dataset:
-            yield data_filename, ["%s-%s.%02d.init" % (name, init_config_name, i) for i in range(INIT_CONFIGS[init_config_name]['N'])], init_config_name, INIT_CONFIGS[init_config_name]
+#             # now generate one of these for every single cv dataset:
+#             yield data_filename, ["%s-%s.%02d.init" % (name, init_config_name, i) for i in range(INIT_CONFIGS[init_config_name]['N'])], init_config_name, INIT_CONFIGS[init_config_name]
 
-def cv_generator():
-    for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-        for data_filename in get_dataset(data_name):
-            name, _ = os.path.splitext(data_filename)
-            for cv_i in range(CV_CONFIGS[cv_config_name]['N']):
-                cv_name_base = "%s-%s.%02d.cv" % (name, cv_config_name, cv_i)
+# def cv_generator():
+#     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
+#         for data_filename in get_dataset(data_name):
+#             name, _ = os.path.splitext(data_filename)
+#             for cv_i in range(CV_CONFIGS[cv_config_name]['N']):
+#                 cv_name_base = "%s-%s.%02d.cv" % (name, cv_config_name, cv_i)
                 
-                yield data_filename, [cv_name_base + ".data",
-                                      cv_name_base + ".latent",
-                                      cv_name_base + ".meta"], cv_i, cv_config_name, CV_CONFIGS[cv_config_name]
+#                 yield data_filename, [cv_name_base + ".data",
+#                                       cv_name_base + ".latent",
+#                                       cv_name_base + ".meta"], cv_i, cv_config_name, CV_CONFIGS[cv_config_name]
 
 
 
-@follows(create_latents_srm)
-@follows(create_latents_clist)
-@follows(create_latents_xsoma)
-@follows(create_latents_bb)
-@follows(create_latents_srm_clist_xsoma)
-@files(cv_generator)
-def create_cv(data_filename, (out_data_filename,
-                              out_latent_filename,
-                              out_meta_filename), cv_i, cv_config_name, cv_config):
-    """ 
-    Creates a single cross-validated data set 
-    """
+# @follows(create_latents_srm)
+# @follows(create_latents_clist)
+# @follows(create_latents_xsoma)
+# @follows(create_latents_bb)
+# @follows(create_latents_srm_clist_xsoma)
+# @files(cv_generator)
+# def create_cv(data_filename, (out_data_filename,
+#                               out_latent_filename,
+#                               out_meta_filename), cv_i, cv_config_name, cv_config):
+#     """ 
+#     Creates a single cross-validated data set 
+#     """
+#     basename, _ = os.path.splitext(data_filename)
+#     latent_filename = basename + ".latent"
+#     meta_filename = basename + ".meta"
+
+
+#     data = pickle.load(open(data_filename))
+#     shape = data['relations']['R1']['data'].shape
+#     N =  shape[0] * shape[1]
+#     if cv_config['type'] == 'nfold':
+#         np.random.seed(0) # set the seed
+
+#         perm = np.random.permutation(N)
+#         subset_size = N / cv_config['N']
+#         subset = perm[cv_i * subset_size:(cv_i+1)*subset_size]
+        
+#         observed = np.ones(N, dtype=np.uint8)
+#         observed[subset] = 0
+#         data['relations']['R1']['observed'] = np.reshape(observed, shape)
+
+#     else:
+#         raise Exception("Unknown cv type")
+    
+#     pickle.dump(data, open(out_data_filename, 'w'))
+                    
+#     latent = pickle.load(open(latent_filename))
+#     pickle.dump(latent, open(out_latent_filename, 'w'))
+                    
+#     meta = pickle.load(open(meta_filename))
+#     meta['cv'] = {'cv_i' : cv_i,
+#                   'cv_config_name' : cv_config_name}
+    
+#     pickle.dump(meta, open(out_meta_filename, 'w'))
+
+            
+# @follows(create_latents_srm)
+# @follows(create_latents_clist)
+# @follows(create_latents_xsoma)
+# @follows(create_latents_bb)
+# @follows(create_latents_srm_clist_xsoma)
+# @follows(create_cv)
+# @files(init_generator)
+# def create_inits(data_filename, out_filenames, init_config_name, init_config):
+#     basename, _ = os.path.splitext(data_filename)
+#     latent_filename = basename + ".latent"
+    
+#     irm.experiments.create_init(latent_filename, data_filename, 
+#                                 out_filenames, 
+#                                 init= init_config['config'], 
+#                                 keep_ground_truth=False)
+
+
+
+# def experiment_generator():
+#     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
+#         for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
+#             name, _ = os.path.splitext(data_filename)
+
+#             inits = ["%s-%s.%02d.init" % (name, init_config_name, i) for i in range(INIT_CONFIGS[init_config_name]['N'])]
+            
+#             exp_name = "%s-%s-%s.wait" % (data_filename, init_config_name, kernel_config_name)
+#             yield [data_filename, inits], exp_name, kernel_config_name
+
+# @follows(create_volume)
+# @follows(create_inits)
+# @files(experiment_generator)
+# def run_exp((data_filename, inits), wait_file, kernel_config_name):
+#     # put the filenames in the data
+#     print "Putting the file", data_filename, "in the bucket" 
+
+#     irm.experiments.to_bucket(data_filename, VOLUME_NAME)
+
+#     [irm.experiments.to_bucket(init_f, VOLUME_NAME) for init_f in inits]
+#     kernel_config_filename = kernel_config_name + ".pickle"
+
+#     kc = KERNEL_CONFIGS[kernel_config_name]
+#     ITERS = kc['ITERS']
+#     kernel_config = kc['kernels']
+#     fixed_k = kc.get('fixed_k', False)
+#     cores = kc.get('cores', DEFAULT_CORES)
+#     relation_class = kc.get('relation_class', DEFAULT_RELATION)
+
+#     pickle.dump(kernel_config, open(kernel_config_filename, 'w'))
+
+#     irm.experiments.to_bucket(kernel_config_filename, VOLUME_NAME)
+
+
+#     CHAINS_TO_RUN = len(inits)
+
+    
+#     jids = []
+
+#     for init_i, init in enumerate(inits):
+#         jid = multyvac.submit(irm.experiments.inference_run, 
+#                               init, 
+#                               data_filename, 
+#                               kernel_config_filename, 
+#                               ITERS, 
+#                               init_i, 
+#                               VOLUME_NAME, 
+#                               None, 
+#                               fixed_k, 
+#                               relation_class = relation_class, 
+#                               cores = cores, 
+#                               _name="%s-%s-%s" % (data_filename, init, 
+#                                                   kernel_config_name), 
+#                               _layer = MULTYVAC_LAYER,
+#                               _multicore = cores, 
+#                               _core = 'f2')
+#         jids.append(jid)
+
+
+#     pickle.dump({'jids' : jids, 
+#                 'data_filename' : data_filename, 
+#                 'inits' : inits, 
+#                 'kernel_config_name' : kernel_config_name}, 
+#                 open(wait_file, 'w'))
+
+
+# @transform(run_exp, suffix('.wait'), '.samples')
+# def get_results(exp_wait, exp_results):
+#     d = pickle.load(open(exp_wait, 'r'))
+    
+#     chains = []
+#     # reorg on a per-seed basis
+#     error_count = 0
+#     for jid in d['jids']:
+#         job = multyvac.get(jid)
+#         print "waiting on", jid
+#         job.wait()
+#         if job.status  != "done" :
+#             print "ERROR", jid, job.status, exp_wait
+#             fid = open("error.%s" % jid, 'w')
+#             fid.write("error! %s\n" % exp_wait)
+#             fid.close()
+#             error_count += 1
+#         else:
+#             print "downloading", jid, "results"
+#             chain_data = job.get_result()
+
+#             chains.append({'scores' : chain_data[0], 
+#                            'state' : chain_data[1], 
+#                            'times' : chain_data[2], 
+#                            'latents' : chain_data[3]})
+#     if error_count > 0.75 * len(d['jids']):
+#         print "MOSTLY FAIL", exp_wait
+        
+#     pickle.dump({'chains' : chains, 
+#                  'exp' : d}, 
+#                 open(exp_results, 'w'))
+
+
+@follows(create_data_latent)
+@files(list(cv.experiment_generator(EXPERIMENTS, CV_CONFIGS,
+                                    INIT_CONFIGS, get_dataset, td)))
+def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits), 
+                          cv_config_name, init_config_name, kernel_config_name,
+                          init_config, cv_config):
+
     basename, _ = os.path.splitext(data_filename)
     latent_filename = basename + ".latent"
     meta_filename = basename + ".meta"
-
+    
 
     data = pickle.load(open(data_filename))
-    shape = data['relations']['R1']['data'].shape
-    N =  shape[0] * shape[1]
-    if cv_config['type'] == 'nfold':
-        np.random.seed(0) # set the seed
-
-        perm = np.random.permutation(N)
-        subset_size = N / cv_config['N']
-        subset = perm[cv_i * subset_size:(cv_i+1)*subset_size]
-        
-        observed = np.ones(N, dtype=np.uint8)
-        observed[subset] = 0
-        data['relations']['R1']['observed'] = np.reshape(observed, shape)
-
-    else:
-        raise Exception("Unknown cv type")
-    
-    pickle.dump(data, open(out_data_filename, 'w'))
-                    
-    latent = pickle.load(open(latent_filename))
-    pickle.dump(latent, open(out_latent_filename, 'w'))
-                    
+    true_latent = pickle.load(open(latent_filename))
     meta = pickle.load(open(meta_filename))
-    meta['cv'] = {'cv_i' : cv_i,
-                  'cv_config_name' : cv_config_name}
     
-    pickle.dump(meta, open(out_meta_filename, 'w'))
-
-            
-@follows(create_latents_srm)
-@follows(create_latents_clist)
-@follows(create_latents_xsoma)
-@follows(create_latents_bb)
-@follows(create_latents_srm_clist_xsoma)
-@follows(create_cv)
-@files(init_generator)
-def create_inits(data_filename, out_filenames, init_config_name, init_config):
-    basename, _ = os.path.splitext(data_filename)
-    latent_filename = basename + ".latent"
-    
-    irm.experiments.create_init(latent_filename, data_filename, 
-                                out_filenames, 
-                                init= init_config['config'], 
-                                keep_ground_truth=False)
-
-
-
-def experiment_generator():
-    for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-        for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
-            name, _ = os.path.splitext(data_filename)
-
-            inits = ["%s-%s.%02d.init" % (name, init_config_name, i) for i in range(INIT_CONFIGS[init_config_name]['N'])]
-            
-            exp_name = "%s-%s-%s.wait" % (data_filename, init_config_name, kernel_config_name)
-            yield [data_filename, inits], exp_name, kernel_config_name
-
-@follows(create_volume)
-@follows(create_inits)
-@files(experiment_generator)
-def run_exp((data_filename, inits), wait_file, kernel_config_name):
-    # put the filenames in the data
-    print "Putting the file", data_filename, "in the bucket" 
-
-    irm.experiments.to_bucket(data_filename, VOLUME_NAME)
-
-    [irm.experiments.to_bucket(init_f, VOLUME_NAME) for init_f in inits]
-    kernel_config_filename = kernel_config_name + ".pickle"
-
+    sc = SparkContext(batchSize=1)
     kc = KERNEL_CONFIGS[kernel_config_name]
-    ITERS = kc['ITERS']
-    kernel_config = kc['kernels']
-    fixed_k = kc.get('fixed_k', False)
-    cores = kc.get('cores', DEFAULT_CORES)
-    relation_class = kc.get('relation_class', DEFAULT_RELATION)
 
-    pickle.dump(kernel_config, open(kernel_config_filename, 'w'))
+    CV_N = cv_config['N']
 
-    irm.experiments.to_bucket(kernel_config_filename, VOLUME_NAME)
-
-
-    CHAINS_TO_RUN = len(inits)
+    INIT_N = init_config['N']
+    print "WE ARE RUNNING THIS THING" 
+    def cv_create(cv_i):
+        """ 
+        returns key, (data, meta)
+        """
+        cv_key = "%s.%d" % (cv_config_name, cv_i)
+        return cv_key, cv.create_cv_pure(data, #_broadcast.value, 
+                                      meta, cv_i,
+                                      cv_config_name, cv_config)
 
     
-    jids = []
-
-    for init_i, init in enumerate(inits):
-        jid = multyvac.submit(irm.experiments.inference_run, 
-                              init, 
-                              data_filename, 
-                              kernel_config_filename, 
-                              ITERS, 
-                              init_i, 
-                              VOLUME_NAME, 
-                              None, 
-                              fixed_k, 
-                              relation_class = relation_class, 
-                              cores = cores, 
-                              _name="%s-%s-%s" % (data_filename, init, 
-                                                  kernel_config_name), 
-                              _layer = MULTYVAC_LAYER,
-                              _multicore = cores, 
-                              _core = 'f2')
-        jids.append(jid)
-
-
-    pickle.dump({'jids' : jids, 
-                'data_filename' : data_filename, 
-                'inits' : inits, 
-                'kernel_config_name' : kernel_config_name}, 
-                open(wait_file, 'w'))
-
-
-@transform(run_exp, suffix('.wait'), '.samples')
-def get_results(exp_wait, exp_results):
-    d = pickle.load(open(exp_wait, 'r'))
+    cv_data_rdd = sc.parallelize(range(CV_N), 
+                                 CV_N).map(cv_create).cache()
     
-    chains = []
-    # reorg on a per-seed basis
-    error_count = 0
-    for jid in d['jids']:
-        job = multyvac.get(jid)
-        print "waiting on", jid
-        job.wait()
-        if job.status  != "done" :
-            print "ERROR", jid, job.status, exp_wait
-            fid = open("error.%s" % jid, 'w')
-            fid.write("error! %s\n" % exp_wait)
-            fid.close()
-            error_count += 1
-        else:
-            print "downloading", jid, "results"
-            chain_data = job.get_result()
+    def create_init_flat((key, (data, meta))):
+        """
+        returns latent
+        """
+        res = []
+        for latent_i, latent in enumerate( cv.create_init_pure(true_latent, data, INIT_N,
+                                                            init_config['config'])):
+            yield "%s.%s" % (key, latent_i), (data, meta, latent)
 
-            chains.append({'scores' : chain_data[0], 
-                           'state' : chain_data[1], 
-                           'times' : chain_data[2], 
-                           'latents' : chain_data[3]})
-    if error_count > 0.75 * len(d['jids']):
-        print "MOSTLY FAIL", exp_wait
+
+    init_latents_rdd  = cv_data_rdd.flatMap(create_init_flat)
+
+    def inference((data, meta, init)):
+
+        return cv.run_exp_pure(data, init, kernel_config_name, 0, kc)
+       # FIXME do we care about this seed? 
         
-    pickle.dump({'chains' : chains, 
-                 'exp' : d}, 
-                open(exp_results, 'w'))
+    joined = init_latents_rdd.repartition(CV_N*INIT_N).cache()
+    print "THERE ARE", joined.getNumPartitions(), "partitions" 
+    results = joined.mapValues(inference)
 
+
+    for rdd, name in [(results, out_samples),
+                      (init_latents_rdd, out_inits),
+                      (cv_data_rdd, out_cv_data)]:
+        url = sparkutil.util.s3n_url(S3_BUCKET, S3_PATH, name)
+        sparkutil.util.s3n_delete(url)
+        rdd.saveAsPickleFile(url)
+        pickle.dump({'url' : url}, open(name, 'w'))
+    
+    sc.stop()
+
+    
+
+@transform(spark_run_experiments, suffix('.samples'), '.samples.pickle')
+def get_samples((exp_samples, exp_cvdata, exp_inits), out_filename):
+    sample_metadata = pickle.load(open(exp_samples, 'r'))
+    
+    sc = SparkContext()
+    results_rdd = sc.pickleFile(sample_metadata['url'])
+
+    sparkutil.util.save_rdd_elements(results_rdd, out_filename, S3_BUCKET, S3_PATH)
+    
+    sc.stop()
+
+    
+@transform(spark_run_experiments, suffix('.samples'), '.cvdata.pickle')
+def get_cvdata((exp_samples, exp_cvdata, exp_inits), out_filename):
+    cvdata_metadata = pickle.load(open(exp_cvdata, 'r'))
+    
+    sc = SparkContext()
+    results_rdd = sc.pickleFile(cvdata_metadata['url'])
+    pickle.dump(results_rdd.collect(),
+                open(out_filename, 'w'))
+    sc.stop()
+
+
+
+
+
+
+@follows(get_samples)
+@transform(get_samples, suffix(".samples.pickle"), ".samples.organized.sentinel")
+def samples_organize(infile, outfile):
+    associated_files_list = pickle.load(open(infile, 'r'))
+    print "="*80
+    
+    print "infile=", infile
+    print associated_files_list
+    for f in associated_files_list:
+        print "\n"
+        a = pickle.load(open(f, 'r'))
+        key_base, cv_id, samp_id = a[0].split('.')
+        dir_name = os.path.join(outfile[:-9], cv_id)
+        print "MAKING", dir_name, "cv_id=", cv_id, "samp_id=", samp_id
+        try:
+            os.makedirs(dir_name)
+        except OSError:
+            pass
+        
+        filename = os.path.join(dir_name, '%s.pickle' % samp_id)
+        source_path = os.path.abspath(f)
+        assert os.path.exists(source_path)
+        print "Linking", source_path, filename
+        try:
+            os.remove(filename)
+        except OSError:
+            pass
+        os.symlink(source_path, filename)
+    fid = open(outfile, 'w')
+    fid.write("")
+    fid.close()
+
+
+@subdivide(get_cvdata, formatter(".+/(?P<base>.*).cvdata.pickle"), 
+           "{path[0]}/{base[0]}.samples.organized/*/cv.data",
+           # Output parameter: Glob matches any number of output file names
+            "{path[0]}/{base[0]}.samples.organized")          # Extra parameter:  Append to this for output file names
+def cvdata_organize(input_file, output_files, output_file_name_root):
+    print "input_file=", input_file
+    a = pickle.load(open(input_file, 'r'))
+    for di, d in enumerate(a):
+        key = d[0]
+        a = key.split('.')[1]
+        data, meta = d[1]
+        pickle.dump(data, open(os.path.join(output_file_name_root, a, "cv.data"), 'w'))
+        pickle.dump(meta, open(os.path.join(output_file_name_root, a, "cv.meta"), 'w'))
+
+@follows(samples_organize)
+@follows(cvdata_organize)
+@collate("sparkdata/*.samples.organized/*",
+         regex(r"(sparkdata/.+.samples.organized)/(\d+)"),
+         #[td(r"\1-\2\4.predlinks"), td(r"\1-\2\4.assign")])
+         [r"\1/predlinks.pickle", r'\1/assign.pickle'])
+def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
+                                          assign_outfile)):
+    """
+    aggregate across samples and cross-validations
+    """
+    print "THIS IS A RUN", predlinks_outfile
+    for d in cv_dirs:
+        print "cv dir", d
+
+    
+    base = os.path.dirname(cv_dirs[0])[:-len('.samples.organized')]
+    s = base.split('-')
+
+    input_basename = s[0]
+    input_data = pickle.load(open(input_basename + ".data"))
+    input_latent = pickle.load(open(input_basename + ".latent"))
+    data_conn = input_data['relations']['R1']['data']
+    model_name= input_data['relations']['R1']['model']
+
+
+    N = len(data_conn)
+
+    true_assign = input_latent['domains']['d1']['assignment']
+    print "for", input_basename, "there are", len(np.unique(true_assign)), "classes"
+    if model_name == "BetaBernoulliNonConj":
+        truth_mat = data_conn
+    elif model_name == "LogisticDistance":
+        truth_mat = data_conn['link']
+        # truth_mat_t_idx = np.argwhere(truth_mat.flatten() > 0).flatten()
+
+    predlinks_outputs = []
+    assignments_outputs = []
+
+
+    N = len(data_conn)
+    
+    for cv_dir in cv_dirs:
+        cv_data = pickle.load(open(os.path.join(cv_dir, 'cv.data'), 'r'))
+        # get the cv idx for later use
+        cv_idx = int(os.path.basename(cv_dir))
+        
+
+    
+        
+        # FIGURE OUT WHICH ENTRIES WERE MISSING
+        heldout_idx = np.argwhere((cv_data['relations']['R1']['observed'].flatten() == 0)).flatten()
+        heldout_true_vals = truth_mat.flatten()[heldout_idx]
+        
+        heldout_true_vals_t_idx = np.argwhere(heldout_true_vals > 0).flatten()
+        heldout_true_vals_f_idx = np.argwhere(heldout_true_vals == 0).flatten()
+        
+        sample_file_str =os.path.join(cv_dir, r"[0-9]*.pickle")
+        print "files are"
+        for sample_name in glob(sample_file_str):
+            chain_i = int(os.path.basename(sample_name)[:-(len('.pickle'))])
+            print chain_i
+            
+            sample = pickle.load(open(sample_name, 'r'))
+            inf_results = sample[1]['res'] # state
+            irm_latent_samp = inf_results[1]
+            scores = inf_results[0]
+            print irm_latent_samp.keys()
+            # compute full prediction matrix 
+            pred = predutil.compute_prob_matrix(irm_latent_samp, input_data, 
+                                                model_name)
+            pf_heldout = pred.flatten()[heldout_idx]
+
+            for pred_thold  in PRED_EVALS:
+                pm = pf_heldout[heldout_true_vals_t_idx]
+                t_t = np.sum(pm >=  pred_thold)
+                t_f = np.sum(pm <= pred_thold)
+                pm = pf_heldout[heldout_true_vals_f_idx]
+                f_t = np.sum(pm >= pred_thold)
+                f_f = np.sum(pm <= pred_thold)
+                predlinks_outputs.append({'chain_i' : chain_i, 
+                                          'score' : scores[-1], 
+                                          'pred_thold' : pred_thold,
+                                          'cv_idx' : cv_idx, 
+                                          't_t' : t_t, 
+                                          't_f' : t_f, 
+                                          'f_t' : f_t, 
+                                          'f_f' : f_f, 
+                                          't_tot' : len(heldout_true_vals_t_idx), 
+                                          'f_tot' : len(heldout_true_vals_f_idx)
+                                      })
+            assignments_outputs.append({'chain_i' : chain_i,
+                                        'score' : scores[-1],
+                                        'cv_idx' : cv_idx, 
+                                        'true_assign' : true_assign,
+                                        'assign' : irm_latent_samp['domains']['d1']['assignment']})
+                                            
+
+
+    predlinks_df = pandas.DataFrame(predlinks_outputs)
+    pickle.dump({'df' : predlinks_df}, 
+                 open(predlinks_outfile, 'w'))
+
+    a_df = pandas.DataFrame(assignments_outputs)
+    pickle.dump({'df' : a_df}, 
+                 open(assign_outfile, 'w'))
+
+                  
+    
 # ## TODO GET OLD PLOTTING FROM PROCESS.PY
 # @transform(get_results, suffix(".samples"), 
 #            ".latent.pdf")
@@ -1650,8 +1901,8 @@ if __name__ == "__main__":
     pipeline_run([data_create_thold, 
                   create_latents_srm, 
                   create_latents_srm_clist_xsoma, 
-                  create_inits, 
-                  get_results, 
+                  get_cvdata,
+                  cv_data_organize,
                   #plot_hypers,
                   #plot_circos_latent, 
                   #compute_cluster_metrics, 

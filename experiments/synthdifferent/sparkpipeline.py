@@ -37,7 +37,7 @@ import predutil
 import boto
 from pyspark import SparkContext
 import cvpipelineutil as cv
-
+import sparkutil
 
 # def saveAsPickleFile(obj, tgtdir, overwrite=True):
 #     try:
@@ -59,8 +59,7 @@ def to_f32(x):
     assert type(a) == np.ndarray
     return a
 
-DEFAULT_CORES = 8
-DEFAULT_RELATION = "ParRelation"
+
 WORKING_DIR = "sparkdata"
 S3_BUCKET = "jonas-testbucket2"
 S3_PATH= "netmotifs/paper/experiments/synthdifferent"
@@ -77,7 +76,7 @@ def get_dataset(data_name):
 
 EXPERIMENTS = [
     ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
-    #('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
+    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
     ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     ('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     ('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
@@ -414,31 +413,31 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
     meta = pickle.load(open(meta_filename))
     
     sc = SparkContext(batchSize=1)
-    
+    kc = KERNEL_CONFIGS[kernel_config_name]
 
     CV_N = cv_config['N']
 
-    INIT_N = init['N']
+    INIT_N = init_config['N']
     print "WE ARE RUNNING THIS THING" 
-    def cv(cv_i):
+    def cv_create(cv_i):
         """ 
         returns key, (data, meta)
         """
         cv_key = "%s.%d" % (cv_config_name, cv_i)
-        return cv_key, create_cv_pure(data, #_broadcast.value, 
+        return cv_key, cv.create_cv_pure(data, #_broadcast.value, 
                                       meta, cv_i,
                                       cv_config_name, cv_config)
 
     
     cv_data_rdd = sc.parallelize(range(CV_N), 
-                                 CV_N).map(cv).cache()
+                                 CV_N).map(cv_create).cache()
     
     def create_init_flat((key, (data, meta))):
         """
         returns latent
         """
         res = []
-        for latent_i, latent in enumerate( create_init_pure(true_latent, data, INIT_N,
+        for latent_i, latent in enumerate( cv.create_init_pure(true_latent, data, INIT_N,
                                                             init_config['config'])):
             yield "%s.%s" % (key, latent_i), (data, meta, latent)
 
@@ -447,7 +446,7 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
 
     def inference((data, meta, init)):
 
-        return run_exp_pure(data, init, kernel_config_name, 0)
+        return cv.run_exp_pure(data, init, kernel_config_name, 0, kc)
        # FIXME do we care about this seed? 
         
     joined = init_latents_rdd.repartition(CV_N*INIT_N).cache()
@@ -458,8 +457,8 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
     for rdd, name in [(results, out_samples),
                       (init_latents_rdd, out_inits),
                       (cv_data_rdd, out_cv_data)]:
-        url = s3n_url(name)
-        s3n_delete(url)
+        url = sparkutil.util.s3n_url(S3_BUCKET, S3_PATH, name)
+        sparkutil.util.s3n_delete(url)
         rdd.saveAsPickleFile(url)
         pickle.dump({'url' : url}, open(name, 'w'))
     
@@ -474,7 +473,7 @@ def get_samples((exp_samples, exp_cvdata, exp_inits), out_filename):
     sc = SparkContext()
     results_rdd = sc.pickleFile(sample_metadata['url'])
 
-    save_rdd_elements(results_rdd, out_filename)
+    sparkutil.util.save_rdd_elements(results_rdd, out_filename, S3_BUCKET, S3_PATH)
     
     sc.stop()
 
