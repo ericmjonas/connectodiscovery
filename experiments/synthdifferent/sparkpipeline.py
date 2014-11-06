@@ -398,7 +398,8 @@ def create_data_latent(infile, (data_filename, latent_filename,
 
         
 @follows(create_data_latent)
-@files(list(cv.experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS)))
+@files(list(cv.experiment_generator(EXPERIMENTS, CV_CONFIGS,
+                                    INIT_CONFIGS, get_dataset, td)))
 def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits), 
                           cv_config_name, init_config_name, kernel_config_name,
                           init_config, cv_config):
@@ -705,7 +706,7 @@ def plot_ari(infile, outfile):
     f.savefig(outfile)
 
 if __name__ == "__main__":
-    print pipeline_main
+
     pipeline_run([create_data_latent,
                   spark_run_experiments,
                   get_samples,

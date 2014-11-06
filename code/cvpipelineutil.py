@@ -222,7 +222,7 @@ def s3n_url(f):
     print url
     return url
 
-def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS):
+def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td):
     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
         data_filename = get_dataset(data_name)[0]
 
