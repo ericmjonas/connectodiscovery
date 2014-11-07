@@ -6,3 +6,8 @@ run predlinks.py
 run predlinks_plot.py
 
 
+
+
+ ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=4g --conf spark.task.cpus=8 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+
+

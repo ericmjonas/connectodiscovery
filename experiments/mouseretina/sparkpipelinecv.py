@@ -69,7 +69,7 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 EXPERIMENTS = [
-    ('retina.0.ld.0.0.xyz', 'cv_nfold_1', 'debug_2_100', 'debug_2'), 
+    ('retina.0.ld.0.0.xyz', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
 
 
     # ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_1000'), 
@@ -119,7 +119,7 @@ for ti in [1]:
                 for var_scale in range(len(VAR_SCALES)):
                     for comp_k in COMP_KS:
                         bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-                        #EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
+                        EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'debug_2'))
                 
 
             
@@ -457,6 +457,19 @@ def create_latents_srm_clist_xsoma(infile,
 def get_dataset(data_name):
     return glob.glob(td("%s.data" %  data_name))
 
+def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td):
+    for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
+        data_filename = td(data_name +".data")
+
+        df = "%s-%s-%s-%s" % (data_name, cv_config_name, init_config_name, kernel_config_name)
+        
+        out_files = [td(df + x) for x in [ ".samples",
+                                       ".cvdata", ".inits"]]
+        init_config = INIT_CONFIGS[init_config_name]
+        cv_config = CV_CONFIGS[cv_config_name]
+        
+        yield data_filename, out_files, cv_config_name, init_config_name, kernel_config_name, init_config, cv_config
+
 # def init_generator():
 #     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
 #         for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
@@ -641,9 +654,13 @@ def get_dataset(data_name):
 #                 open(exp_results, 'w'))
 
 
-@follows(create_data_latent)
-@files(list(cv.experiment_generator(EXPERIMENTS, CV_CONFIGS,
-                                    INIT_CONFIGS, get_dataset, td)))
+@follows(create_latents_srm)
+@follows(create_latents_clist)
+@follows(create_latents_xsoma)
+@follows(create_latents_bb)
+@follows(create_latents_srm_clist_xsoma)
+@files(list(experiment_generator(EXPERIMENTS, CV_CONFIGS,
+                                 INIT_CONFIGS, get_dataset, td)))
 def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits), 
                           cv_config_name, init_config_name, kernel_config_name,
                           init_config, cv_config):
@@ -770,7 +787,8 @@ def samples_organize(infile, outfile):
     fid.write("")
     fid.close()
 
-
+@follows(get_samples)
+@follows(get_cvdata)
 @subdivide(get_cvdata, formatter(".+/(?P<base>.*).cvdata.pickle"), 
            "{path[0]}/{base[0]}.samples.organized/*/cv.data",
            # Output parameter: Glob matches any number of output file names
@@ -1900,9 +1918,13 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
 if __name__ == "__main__":    
     pipeline_run([data_create_thold, 
                   create_latents_srm, 
-                  create_latents_srm_clist_xsoma, 
+                  create_latents_srm_clist_xsoma,
+                  spark_run_experiments,
                   get_cvdata,
-                  cv_data_organize,
+                  get_samples,
+                  samples_organize,
+                  cvdata_organize
+                  #cv_data_organize,
                   #plot_hypers,
                   #plot_circos_latent, 
                   #compute_cluster_metrics, 
