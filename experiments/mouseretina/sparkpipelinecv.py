@@ -81,12 +81,12 @@ EXPERIMENTS = [
 THOLDS = [0.01, 0.1, 0.5, 1.0]
     
 MULAMBS = [1.0, 5.0, 10.0, 20.0, 50.0]
-PMAXS = [0.95, 0.9, 0.7]
+PMAXS = [0.95] # , 0.9, 0.7]
 
 BB_ALPHAS = [1.0]
 BB_BETAS = [1.0]
 
-VAR_SCALES = [0.01, 0.1, 1.0]
+VAR_SCALES = [0.01, 0.1] # , 1.0]
 COMP_KS = [2, 3]
 
 # for ti in [1]: # remember to add 2 back in ! 
@@ -119,7 +119,7 @@ for ti in [1]:
                 for var_scale in range(len(VAR_SCALES)):
                     for comp_k in COMP_KS:
                         bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-                        EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'debug_2'))
+                        EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
                 
 
             
@@ -659,6 +659,7 @@ def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td)
 @follows(create_latents_xsoma)
 @follows(create_latents_bb)
 @follows(create_latents_srm_clist_xsoma)
+@jobs_limit(1)
 @files(list(experiment_generator(EXPERIMENTS, CV_CONFIGS,
                                  INIT_CONFIGS, get_dataset, td)))
 def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits), 
@@ -792,7 +793,8 @@ def samples_organize(infile, outfile):
 @subdivide(get_cvdata, formatter(".+/(?P<base>.*).cvdata.pickle"), 
            "{path[0]}/{base[0]}.samples.organized/*/cv.data",
            # Output parameter: Glob matches any number of output file names
-            "{path[0]}/{base[0]}.samples.organized")          # Extra parameter:  Append to this for output file names
+            "{path[0]}/{base[0]}.samples.organized")
+# Extra parameter:  Append to this for output file names
 def cvdata_organize(input_file, output_files, output_file_name_root):
     print "input_file=", input_file
     a = pickle.load(open(input_file, 'r'))
@@ -803,11 +805,12 @@ def cvdata_organize(input_file, output_files, output_file_name_root):
         pickle.dump(data, open(os.path.join(output_file_name_root, a, "cv.data"), 'w'))
         pickle.dump(meta, open(os.path.join(output_file_name_root, a, "cv.meta"), 'w'))
 
+PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
+
 @follows(samples_organize)
 @follows(cvdata_organize)
-@collate("sparkdata/*.samples.organized/*",
-         regex(r"(sparkdata/.+.samples.organized)/(\d+)"),
-         #[td(r"\1-\2\4.predlinks"), td(r"\1-\2\4.assign")])
+@collate("sparkdatacv/*.samples.organized/*",
+         regex(r"(sparkdatacv/.+.samples.organized)/(\d+)"),
          [r"\1/predlinks.pickle", r'\1/assign.pickle'])
 def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
                                           assign_outfile)):
@@ -862,7 +865,7 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
         
         sample_file_str =os.path.join(cv_dir, r"[0-9]*.pickle")
         print "files are"
-        for sample_name in glob(sample_file_str):
+        for sample_name in glob.glob(sample_file_str):
             chain_i = int(os.path.basename(sample_name)[:-(len('.pickle'))])
             print chain_i
             
@@ -1923,7 +1926,8 @@ if __name__ == "__main__":
                   get_cvdata,
                   get_samples,
                   samples_organize,
-                  cvdata_organize
+                  cvdata_organize,
+                  cv_collate_predlinks_assign
                   #cv_data_organize,
                   #plot_hypers,
                   #plot_circos_latent, 
@@ -1944,5 +1948,5 @@ if __name__ == "__main__":
                   #plot_clustered_somapos,
               #plot_cluster_vars, 
               #plot_cluster_aris, 
-              ]) # , multiprocess=3)
+              ], multiprocess=6) # , multiprocess=3)
     
