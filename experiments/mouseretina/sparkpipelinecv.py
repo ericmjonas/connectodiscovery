@@ -831,10 +831,16 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
     data_conn = input_data['relations']['R1']['data']
     model_name= input_data['relations']['R1']['model']
 
+    input_meta = pickle.load(open(input_basename + ".meta"))['infile']
+    meta = pickle.load(open(input_meta, 'r'))
+    
+    print "META IS", meta.keys()
+
 
     N = len(data_conn)
 
-    true_assign = input_latent['domains']['d1']['assignment']
+    true_assign = meta['cells']['type_id'] # input_latent['domains']['d1']['assignment']
+
     print "for", input_basename, "there are", len(np.unique(true_assign)), "classes"
     if model_name == "BetaBernoulliNonConj":
         truth_mat = data_conn
