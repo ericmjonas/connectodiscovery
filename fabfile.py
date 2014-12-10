@@ -33,7 +33,7 @@ def deploy():
     
     project.rsync_project("/data/connect-disco-paper/", local_dir="./",
                           exclude=['*.pickle', 'experiments/synthdifferent/sparkdata'],
-                          extra_opts='--files-from=.git-files-list')
+                          extra_opts='--files-from=.git-files-list -l')
     
     env['forward_agent']= True
     with cd("/data/connect-disco-paper"):

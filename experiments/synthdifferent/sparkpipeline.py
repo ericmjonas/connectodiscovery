@@ -72,10 +72,11 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 def get_dataset(data_name):
-    return glob(td("%s.data" %  data_name))
+    # why were we globbing here? I'm not sure
+    return td("%s.data" %  data_name)
 
 EXPERIMENTS = [
-    ('srm.00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
+    ('srm_00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
 
     #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
@@ -87,6 +88,17 @@ EXPERIMENTS = [
 
     #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
 ]
+
+# Addditional experiments
+for seed in range(10):
+    for model in ['srm', 'sbmnodist', 'lpcm', 'mm']:
+        
+        EXPERIMENTS.append(('%s_%02d' %(model, seed),
+                            'cv_nfold_10',
+                            'fixed_20_100',
+                            'anneal_slow_1000'))
+        
+
 
 PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
 
@@ -150,7 +162,7 @@ KERNEL_CONFIGS = {
 def srm_params():
     for seed in range(10):
         filename = "srm_%02d.sourcedata" % seed 
-    yield None, td(filename), seed
+        yield None, td(filename), seed
 
 @files(srm_params)
 def create_data_srm(infile, outfile, seed):
@@ -192,7 +204,7 @@ def create_data_srm(infile, outfile, seed):
 def sbmnodist_params():
     for seed in range(10):
         filename = "sbmnodist_%02d.sourcedata" % seed 
-    yield None, td(filename), seed
+        yield None, td(filename), seed
 
 @files(sbmnodist_params)
 def create_data_sbm_nodist(infile, outfile, seed):
@@ -235,7 +247,7 @@ def create_data_sbm_nodist(infile, outfile, seed):
 def lpcm_params():
     for seed in range(10):
         filename = "lpcm_%02d.sourcedata" % seed 
-    yield None, td(filename), seed
+        yield None, td(filename), seed
 
 @files(lpcm_params)
 def create_data_latent_position(infile, outfile, seed):
@@ -305,7 +317,7 @@ def create_data_latent_position(infile, outfile, seed):
 def mm_params():
     for seed in range(10):
         filename = "mm_%02d.sourcedata" % seed 
-    yield None, td(filename), seed
+        yield None, td(filename), seed
 
 @files(mm_params)
 def create_data_mixed_membership(infile, outfile, seed):
@@ -730,20 +742,25 @@ def plot_ari(infile, outfile):
 
 if __name__ == "__main__":
 
-    pipeline_run([create_data_latent,
-                  spark_run_experiments,
-                  get_samples,
-                  samples_organize,
-                  get_cvdata,
-                  cvdata_organize,
-                  cv_collate_predlinks_assign,
-                  # create_inits,
+    pipeline_run([
+        create_data_srm,
+        create_data_sbm_nodist,
+        create_data_latent_position,
+        create_data_mixed_membership,
+        create_data_latent,
+        spark_run_experiments,
+        get_samples,
+        samples_organize,
+        get_cvdata,
+        cvdata_organize,
+        #cv_collate_predlinks_assign,
+        # create_inits,
                   # get_results,
                   # cv_collate, 
                   
-                  plot_predlinks_roc,
-                  plot_ari, 
-                  # plot_circos_latent,
-              ])
+        #plot_predlinks_roc,
+        #plot_ari, 
+        # plot_circos_latent,
+    ])
     
     

@@ -1,0 +1,43 @@
+\subsection*{Types and connectivity in artificial structures}
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=4in]{mos6502.ai}}
+  \caption{Discovering connectivity and type the 6502 microprocessor.
+    a.) is the micrograph of the original microprocessor, with the
+    region containing the registers under study highlighted. b.) Our
+    graph consists of the interconnections of MOS field-effect
+    transistors with three terminals, Gate, C1, and C2. Reconstruction
+    technique did not permit resolution of C1 and C2 into source and
+    drain. c.) The spatial distribution of the transistors in each
+    cluster show a clear pattern d.) The clusters and connectivity
+    versus distance for connections between Gate and C1, Gate and C2,
+    and C1 and C2 terminals on a transistor. Red and teal types have a
+    terminal pulled down to ground and mostly function as
+    inverters. Purple class are clocked, stateful transistors, orange
+    control the ALU and yellow control the special data bus (SDB).}
+  \label{fig:mos6502}
+\end{figure}
+
+
+To show the applicability of our method to other connectome-style
+datasets, we obtained the spatial location and interconnectivity of
+the transistors in a classic microprocessor, the MOS Technology 6502
+(used in the Apple II) \autocite{James2010}. Computer architects use
+common patterns of transistors when designing circuits, with each
+transistor having a ``type'' in the circuit. We identified a region of
+the processor with complex but known structure containing the primary
+8-bit registers X, Y, and S (fig~\ref{fig:mos6502}).
+
+Our algorithm identifies areas of spatial homogeneity that mirror the
+known structure in the underlying architectural circuit, segmenting
+transistor types recognizable to computer architects. Using the
+original schematics, we see that one identified type contains the
+``clocked'' transistors, which retain digital state. Two other types
+contain transistors with pins C1 or C2 connected to ground, mostly
+serving as inverters.  An additional identified type controls the
+behavior of the three registers of interest (X, Y, and S) with respect
+to the SB data bus, either allowing them to latch or drive data from
+the bus. The repeat patterns of spatial connectivity are visible in
+figure~\ref{fig:mos6502}c, showing the man-made horizontal and
+vertical layout of the same types of transistors.
+

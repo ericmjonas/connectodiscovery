@@ -229,7 +229,7 @@ def run_exp_pure(data, init, kernel_config_name, seed, kc):
 
 def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td):
     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-        data_filename = get_dataset(data_name)[0]
+        data_filename = get_dataset(data_name) # [0]
 
         df = "%s-%s-%s-%s" % (data_name, cv_config_name, init_config_name, kernel_config_name)
         

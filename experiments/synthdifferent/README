@@ -1,0 +1,13 @@
+Generate synthetic data from :
+1. mixed-membership model
+2. continuous type
+3. LPCM
+4. known true types
+
+
+
+
+SPARK_DRIVER_MEMORY=32G ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=4g --conf spark.task.cpus=4 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py  sparkpipeline.py
+
+
+
