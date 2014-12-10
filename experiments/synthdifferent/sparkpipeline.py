@@ -75,9 +75,7 @@ def get_dataset(data_name):
     return glob(td("%s.data" %  data_name))
 
 EXPERIMENTS = [
-    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
-    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
-
+    ('srm.00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
 
     #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
@@ -137,8 +135,8 @@ KERNEL_CONFIGS = {
     'debug_20' : {'ITERS' : 2, 
                   'kernels': irm.runner.default_kernel_anneal(1.0, 20)
               },
-    'debug_10' : {'ITERS' : 2, 
-                  'kernels': irm.runner.default_kernel_anneal(1.0, 20)
+    'debug_2' : {'ITERS' : 2, 
+                  'kernels': irm.runner.default_kernel_anneal(1.0, 2)
               },
     'debug_200' : {'ITERS' : 200, 
                   'kernels': irm.runner.default_kernel_anneal(1.0, 160)
@@ -151,7 +149,7 @@ KERNEL_CONFIGS = {
 
 def srm_params():
     for seed in range(10):
-        filename = "srm.%02d.sourcedata" % seed 
+        filename = "srm_%02d.sourcedata" % seed 
     yield None, td(filename), seed
 
 @files(srm_params)
@@ -193,7 +191,7 @@ def create_data_srm(infile, outfile, seed):
 
 def sbmnodist_params():
     for seed in range(10):
-        filename = "sbmnodist.%02d.sourcedata" % seed 
+        filename = "sbmnodist_%02d.sourcedata" % seed 
     yield None, td(filename), seed
 
 @files(sbmnodist_params)
@@ -236,7 +234,7 @@ def create_data_sbm_nodist(infile, outfile, seed):
 
 def lpcm_params():
     for seed in range(10):
-        filename = "lpcm.%02d.sourcedata" % seed 
+        filename = "lpcm_%02d.sourcedata" % seed 
     yield None, td(filename), seed
 
 @files(lpcm_params)
@@ -306,7 +304,7 @@ def create_data_latent_position(infile, outfile, seed):
 
 def mm_params():
     for seed in range(10):
-        filename = "mm.%02d.sourcedata" % seed 
+        filename = "mm_%02d.sourcedata" % seed 
     yield None, td(filename), seed
 
 @files(mm_params)

@@ -21,6 +21,8 @@ def add_packages():
     run("pip install multyvac")
     run("pip install fabric")
     run("pip install --upgrade git+ssh://git@github.com/ericmjonas/sparkutils.git")
+    run("yum -y install tmux")
+    run("yum -y update")
 
 @task
 def deploy():
