@@ -77,10 +77,12 @@ def get_dataset(data_name):
 EXPERIMENTS = [
     ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
     ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
-    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    ('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    ('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    ('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+
+
+    #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    #('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    #('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
     # ('lpcm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
     # ('mm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
 
@@ -146,9 +148,15 @@ KERNEL_CONFIGS = {
 
 # 
 
-@files(None, td("srm.sourcedata"))
-def create_data_srm(infile, outfile):
-    np.random.seed(0)
+
+def srm_params():
+    for seed in range(10):
+        filename = "srm.%02d.sourcedata" % seed 
+    yield None, td(filename), seed
+
+@files(srm_params)
+def create_data_srm(infile, outfile, seed):
+    np.random.seed(seed)
     conn_config = {}
     CLASS_N = 4
     SIDE_N = 10
@@ -183,9 +191,14 @@ def create_data_srm(infile, outfile):
                 open(outfile, 'w'))
 
 
-@files(None, td("sbmnodist.sourcedata"))
-def create_data_sbm_nodist(infile, outfile):
-    np.random.seed(0)
+def sbmnodist_params():
+    for seed in range(10):
+        filename = "sbmnodist.%02d.sourcedata" % seed 
+    yield None, td(filename), seed
+
+@files(sbmnodist_params)
+def create_data_sbm_nodist(infile, outfile, seed):
+    np.random.seed(seed)
     conn_config = {}
     CLASS_N = 4
     SIDE_N = 10
@@ -221,9 +234,14 @@ def create_data_sbm_nodist(infile, outfile):
 
 
 
-@files(None, td("lpcm.sourcedata"))
-def create_data_latent_position(infile, outfile):
-    np.random.seed(0)
+def lpcm_params():
+    for seed in range(10):
+        filename = "lpcm.%02d.sourcedata" % seed 
+    yield None, td(filename), seed
+
+@files(lpcm_params)
+def create_data_latent_position(infile, outfile, seed):
+    np.random.seed(seed)
 
     LATENT_D = 3
     CLASS_N = 4
@@ -285,18 +303,24 @@ def create_data_latent_position(infile, outfile):
                 open(outfile, 'w'))
 
 
-@files(None, td("mm.sourcedata"))
-def create_data_mixed_membership(infile, outfile):
+
+def mm_params():
+    for seed in range(10):
+        filename = "mm.%02d.sourcedata" % seed 
+    yield None, td(filename), seed
+
+@files(mm_params)
+def create_data_mixed_membership(infile, outfile, seed):
     """
     Each cell can have some subset of 4 properties, and there exist
     arbitrary predicates that dictate whether or not it connects
     to other cells. 
 
-    This is really equivalent to just 2^3 possible latent states, 
+    This is really equivalent to just 2^4 possible latent states, 
     but with a simpler structure on connectivity
     """
     
-    np.random.seed(0)
+    np.random.seed(seed)
     conn_config = {}
     CLASS_ATTR_N = 4
     CLASS_N = 2**CLASS_ATTR_N
@@ -540,6 +564,7 @@ def cvdata_organize(input_file, output_files, output_file_name_root):
         pickle.dump(data, open(os.path.join(output_file_name_root, a, "cv.data"), 'w'))
         pickle.dump(meta, open(os.path.join(output_file_name_root, a, "cv.meta"), 'w'))
 
+
 @follows(samples_organize)
 @follows(cvdata_organize)
 @collate("sparkdata/*.samples.organized/*",
@@ -648,6 +673,7 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
                  open(assign_outfile, 'w'))
 
                   
+
 @transform(cv_collate_predlinks_assign, suffix("predlinks.pickle"), "roc.pdf")
 def plot_predlinks_roc(infile, outfile):
     preddf = pickle.load(open(infile[0], 'r'))['df']
@@ -660,9 +686,9 @@ def plot_predlinks_roc(infile, outfile):
     
     # group by cv set
     for row_name, cv_df in preddf.groupby('cv_idx'):
-        print "PLOTTING", row_name
-        cv_df = cv_df.sort('fp')
-        ax.plot(cv_df['fp'], cv_df['tp'], c='k', alpha=0.5)
+        cv_df_m = cv_df.groupby('pred_thold').mean().sort('fp')
+        ax.plot(cv_df_m['fp'], cv_df_m['tp'] )
+    
 
     fname = infile[0].split('-')[0]
     ax.set_title(fname)

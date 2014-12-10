@@ -1,7 +1,7 @@
 \documentclass{article}
 \usepackage[american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
-\usepackage{todonotes}
+\usepackage{fixme}
 \usepackage{grffile}
 \usepackage{booktabs}
 \usepackage{hyperref}
@@ -156,7 +156,8 @@ function of distance. }
 \label{fig:overview}
 \end{figure}
 
-\section*{Results}
+\section*{Methods}
+
 
 We build a structured probabilistic model which begins with the
 generic notion of a cell being a member of a single, unobserved type
@@ -166,22 +167,67 @@ example, retinal ganglion cells may synapse on nearby, but not far
 away, amacrine cells, with ganglion cells being superficial and having
 a broad distribution of synapses.  
 
+
 From these assumptions (priors) we develop a generative Bayesian model
 that estimates the underlying cell types and how they connect. We take
-as input (fig ~\ref{fig:overview}a) the connectivity matrix of cells (fig ~\ref{fig:overview}b) ,
-a matrix of the distance between cells (fig ~\ref{fig:overview}c), the per-cell soma depth
-(fig ~\ref{fig:overview}d) and the depth profile of the cell's
-synapses (fig ~\ref{fig:overview}e). We perform joint probabilistic
-inference to automatically learn the number of cell types, which cells
-belong to which type, their type-specific connectivity, and how
-connections between types vary with distance. We also simultaneously
-learn the soma depth associated with each type and the typical
-synaptic density profile (fig ~\ref{fig:overview}f-h.).
+as input (fig ~\ref{fig:overview}a) the connectivity matrix of cells
+(fig ~\ref{fig:overview}b) , a matrix of the distance between cells
+(fig ~\ref{fig:overview}c), the per-cell soma depth (fig
+~\ref{fig:overview}d) and the depth profile of the cell's synapses
+(fig ~\ref{fig:overview}e). We perform joint probabilistic inference
+to automatically learn the number of cell types, which cells belong to
+which type, their type-specific connectivity, and how connections
+between types vary with distance. We also simultaneously learn the
+soma depth associated with each type and the typical synaptic density
+profile (fig ~\ref{fig:overview}f-h.).
 
-We apply our algorithm to datasets from mouse
-retina, C. elegans and a historical microprocessor. Anatomists
-classify cells based on many features, giving us a meaningful baseline
-to compare against.
+
+As an illustrative example, consider a network with only three cell
+types, labeled A, B, and C. Assume the network has three types of
+cells, they are uniformly distributed in space, and that the
+probability of connection between any two cells, $c_i$ and $c_j$,
+depends only on their type and their distance, according to a logistic
+(sigmoidal) function. Let A connect only to nearby B and C cells, but B
+connect to any C regardless of distance. 
+
+
+For the basic link-distance model, we take as input a connectivity
+matrix $R$ defining the connections between cell $e_i$ and $e_j$, as
+well as a distance function $d(e_i, e_j)$ representing a (physical)
+distance between adjacent cells.  See
+the supplemental material for extension to multiple connectivity
+matrices. We assume there exist an unknown number $K$ of latent
+(unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
+cell $e_i$ belongs to a single cell type. We indicate a cell $e_i$ is
+of type $k$ using the assignment vector $\vec(c)$, so $c_i = k$. The
+observed connectivity between two cells $R(e_i, e_j)$ then depends
+only on their latent type and their distance through a link function
+$f(\cdot, d(e_i, e_j))$. We assume $f$ is parameterized based on the
+latent type, $c_i=m$ and $c_j=n$, via a parameter$\eta_{mn}$, as well
+as a set of global hyper parameters $\theta$, such that the link
+function is $f(d(e_i, e_j) | \eta_{mn}, \theta)$.
+
+We then jointly infer the maximum a posteriori (MAP) estimate of the
+class assignment vector $\vec(c) = \{c_i\}$, the parameter matrix
+$\eta_{mn}$, and the global model hyperparameters $\theta$ :
+
+\begin{equation}
+  p(\vec{c}, \eta, \theta | R ) \propto \prod_{i, j} p(R(e_i, e_j) | f(d(e_i, e_j) | \eta_{c_ic_j}), \theta) \prod_{m, n} p(\eta_{mn} | \theta)  p(\theta) p(\vec{c} | \alpha) p(\alpha) p(\theta)
+\end{equation}
+
+For the retina data, we then extend the model with the additional
+features indicated. Cell soma depth is modeled as a
+cell-type-dependent Gaussian with latent (unknown) per-type mean and
+variance. Similarly, each cell has some number $N_i$ of synapses, 
+each of which is drawn from a cell-type-specific density profile
+with up to three modes.
+
+Inference is performed in three steps via composable transition 
+kernels -- one for structural, one for per-type parameters, and
+one kernel for global parameters and hyperparameters. Details
+of data preprocessing, inference parameters, and runtime can
+be found in the Supplementary Methods section. 
+
 
 We start with a model for connectivity, the infinite stochastic block
 model (iSBM)\autocite{Kemp2006a,Xu2006}, which has been shown to
@@ -192,6 +238,33 @@ exponential distance-link functions.  We additionally model cell body
 depth unimodally and synapse density profile multimodially (see
 Methods for mathematical details).
 
+\fxwarn{Do we talk about cross-validation early on? What about posterior uncertainty?}
+
+\subsection{Metrics}
+We focus on two questions we can ask from the learned model: which
+cells are of the same type? and given any two cells, what is the
+probability of their connection? 
+
+To assess the accuracy of a clustering compared to that determined by
+neuroanatomists, we employ the adjustded Rand index (ARI). ARI
+measures the similarity of two clusterings. While there are no perfect
+clustering comparison metrics (see supplemental for a discussion of
+ARI's shortcomings) all suffer from the need to balance
+``overclustering'' (calling a single type two different types) with
+``merging'' (calling two distinct types a single type).
+
+To test whether our model accurately captures the true structure of
+the data, we learn the model on the data with a subset of the links
+missing and then compute our predictive accuracy. We perform 10-way
+cross validation on a given dataset, learn the resulting model, and
+use that model to predict the missing synapses. Each potential
+link between cells is assigned a probability, and we compute
+the area under the curve (AUC) for the resulting ROC curve. 
+\fxwarn{Add additional ARI} 
+\section*{Results}
+
+
+\subsection{Ground Truth Validation}
 To validate our model, we performed a series of simulations to test if
 the model can accurately recover the true underlying network structure
 and cell type identity.  We thus simulate data for which we know the
@@ -200,13 +273,56 @@ algorithm (see methods) with the one we used for simulation. We find
 that the model does a good job of recovering the correct number of
 cell types, (fig~\ref{fig:synthetic}a), the the cell identities
 (fig~\ref{fig:synthetic}b), and the spatial extent of each type
-(fig~\ref{fig:synthetic}c).  For comparison, existing infinite stochastic block model assumes cell type alone matters, and thus finds small neighborhoods of connected nodes (instead of global connectivity patterns). The model converges
-relatively quickly to an estimate of the most probable values for the
-cell types, which is enabled by using a combination of simulated
-annealing and parallelized Markov chain Monte Carlo (see methods for
-details). Thus we can apply our model to simulated datasets with structure
-and scale similar to that of our biological datasets and recover the known 
-correct structure. 
+(fig~\ref{fig:synthetic}c).  For comparison, existing infinite
+stochastic block model assumes cell type alone matters, and thus finds
+small neighborhoods of connected nodes (instead of global connectivity
+patterns). The model converges relatively quickly to an estimate of
+the most probable values for the cell types, which is enabled by using
+a combination of simulated annealing and parallelized Markov chain
+Monte Carlo (see methods for details). Thus we can apply our model to
+simulated datasets with structure and scale similar to that of our
+biological datasets and recover the known correct structure.
+
+\subsection{Model Mismatch}
+Our type-and-distance assumptions for our connectivty model are
+simplifying, and reflect a general consensus about the organization of
+some (but not all) types of neural tissue. To show where our model
+performs poorly, we attempt connectivity inference on five sets of
+synthetic data. Our goal is to show that our model does not find
+``structure'' when there is none. \fxwarning{Fix this phrasing -- we want to say 'if your model thinks there are types, there probably are!}. 
+
+\begin{itemize}
+\item Data with type-specific connectivity and distance dependence
+\item Data with type-specific connectivity and no distance dependence
+\item Data generated according to a latent-position clustering model,
+  where each cell belongs to a type which is part of a cluster in a
+  low-dimensional space \fxwarning{Cite this paper}
+\item cell type is combinatorial -- there are three possible
+  properties a cell can have, and each subset of properties influences
+  connectivity to neighboring cells. 
+\item cell type is a continuum -- each cell's type continuously varies
+  from zero to one, and the probability of a connection between cells
+  depends on this type.
+\end{itemize}
+
+We generate ten synthetic datasets based on each of these assumptions,
+and perform 10-way cross validation to predict link accuracy as well
+as ARI to the known (``true'') type, type spatial extent, and type
+number.
+
+\fxwarn{Add results} 
+
+
+\subsection{Sensitivity to Edge Effects} 
+
+Initial connectomic efforts reconstruct only a small section of tissue
+-- as a result, many connections to cells outside that tissue volume
+will be lost. We performed simulations to check if 1. edge effects
+could destroy spatial structure and if edge effects could introduce
+artifical, spurious spatial structure. 
+
+\fxwarn{Add ``intrudoce spatial structure where there is none}
+
 
 \begin{figure}
   \centering 

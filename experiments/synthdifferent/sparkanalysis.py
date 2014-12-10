@@ -1,16 +1,17 @@
 """
 """
 import sys
-# total hack, I should really know better
-sys.path.append("../../code")
 import matplotlib
 matplotlib.use('Agg')
+# total hack, I should really know better
+sys.path.append("../../code")
 
 from ruffus import *
 import cPickle as pickle
 import numpy as np
 import copy
-import os, glob, sys
+import os, glob, sys, shutil
+from glob import glob
 import time
 from matplotlib import pylab
 import matplotlib
@@ -21,21 +22,20 @@ from sklearn import metrics
 import preprocess
 import sqlite3
 import connattribio 
-import multyvac
 
 import matplotlib.gridspec as gridspec
 import models
+import multyvac
 
 import irm
 import irm.data
 import util
 from irm import rand
-
 import predutil
 import boto
+
 import cvpipelineutil as cv
 import sparkutil
-
 
 
 def dist(a, b):
@@ -47,81 +47,38 @@ def to_f32(x):
     assert type(a) == np.ndarray
     return a
 
-DEFAULT_CORES = 8
-DEFAULT_RELATION = "ParRelation"
-WORKING_DIR = "sparkdatacv"
+
+WORKING_DIR = "sparkdata"
 S3_BUCKET = "jonas-testbucket2"
-S3_PATH= "netmotifs/paper/experiments/mouseretina"
-
-
-RETINA_DB = "../../../preprocess/mouseretina/mouseretina.db"
-
-CV_CONFIGS = {'cv_nfold_10' : {'N' : 10,
-                               'type' : 'nfold'},
-              'cv_nfold_2' : {'N' : 2,
-                              'type' : 'nfold'}}
+S3_PATH= "netmotifs/paper/experiments/synthdifferent"
 
 
 
 
+    
 def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
+def get_dataset(data_name):
+    return glob(td("%s.data" %  data_name))
+
 EXPERIMENTS = [
-    ('retina.0.ld.0.0.xyz', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
+    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
+    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
+    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    ('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
+    # ('lpcm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
+    # ('mm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
 
 
-    # ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_1000'), 
-    # ('retina.1.bb' , 'fixed_20_100', 'anneal_slow_1000'), 
     #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
 ]
 
-
-THOLDS = [0.01, 0.1, 0.5, 1.0]
-    
-MULAMBS = [1.0, 5.0, 10.0, 20.0, 50.0]
-PMAXS = [0.95] # , 0.9, 0.7]
-
-BB_ALPHAS = [1.0]
-BB_BETAS = [1.0]
-
-VAR_SCALES = [0.01, 0.1] # , 1.0]
-COMP_KS = [2, 3]
-
-# for ti in [1]: # remember to add 2 back in ! 
-#     for v in range(len(VAR_SCALES)):
-#         for k in COMP_KS:
-#             EXPERIMENTS.append(('retina.%d.clist.%d.%d' % (ti, v, k) , 
-#                                 'fixed_20_100', 'anneal_slow_1000'))
+PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
 
 
-# # for ti in range(len(THOLDS)):
-# #     for ml_i in range(len(MULAMBS)):
-# #         for pmax_i in range(len(PMAXS)):
-# #             for vars in ['x', 'yz', 'xyz']:
-# #                 bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
-# #                 EXPERIMENTS.append((bs, 'fixed_20_100', 'anneal_slow_400'))
-
-
-for ti in [1]: # (len(THOLDS)):
-    for ml_i in [3]:
-        for pmax_i in range(len(PMAXS)):
-            for vars in ['xyz']: 
-                bs = 'retina.%d.ld.%d.%d.%s' % (ti, ml_i, pmax_i, vars)
-                #EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
-
-
-for ti in [1]:
-    for ml_i in [3] : 
-        for pmax_i in range(len(PMAXS)):
-            for vars in ['xyz']:
-                for var_scale in range(len(VAR_SCALES)):
-                    for comp_k in COMP_KS:
-                        bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-                        EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
-                
-
-            
 INIT_CONFIGS = {'fixed_20_100' : {'N' : 20, 
                                   'config' : {'type' : 'fixed', 
                                               'group_num' : 100}}, 
@@ -130,10 +87,18 @@ INIT_CONFIGS = {'fixed_20_100' : {'N' : 20,
                                              'group_num' : 100}}, 
             }
 
+CV_CONFIGS = {'cv_nfold_10' : {'N' : 10,
+                               'type' : 'nfold'},
+              'cv_nfold_2' : {'N' : 2,
+                               'type' : 'nfold'},
+          }
+
 
 slow_anneal = irm.runner.default_kernel_anneal()
 slow_anneal[0][1]['anneal_sched']['start_temp'] = 64.0
 slow_anneal[0][1]['anneal_sched']['iterations'] = 800
+
+
 
 def generate_ld_hypers():
     space_vals =  irm.util.logspace(1.0, 80.0, 40)
@@ -149,60 +114,51 @@ def generate_ld_hypers():
 
 
 slow_anneal[0][1]['subkernels'][-1][1]['grids']['LogisticDistance'] = generate_ld_hypers()
-slow_anneal[0][1]['subkernels'][-1][1]['grids']['MixtureModelDistribution'] = None
 
-
-def soma_x_hp_grid():
-    GRIDN = 10
-    mu = np.linspace(20, 120, GRIDN+1) 
-    sigmasq = irm.util.logspace(1.0, 2.0, GRIDN)
-    kappa = [0.1, 1.0]
-    nu = irm.util.logspace(10.0, 50.0, GRIDN) 
-    
-    hps = []
-    for m in mu:
-        for s in sigmasq:
-            for k in kappa:
-                for n in nu:
-                    hps.append({'mu' : m, 
-                                'kappa' : k, 
-                                'sigmasq' : s, 
-                                'nu' : n})
-    return hps
-
-slow_anneal[0][1]['subkernels'][-1][1]['grids']['r_soma_x'] = None  # soma_x_hp_grid()
 
 
 KERNEL_CONFIGS = {
     'anneal_slow_1000' : {'ITERS' : 1000, 
                          'kernels' : slow_anneal},
-    'debug_2' : {'ITERS' : 2, 
-                  'kernels': irm.runner.default_kernel_anneal(1.0, 2)
+    'debug_20' : {'ITERS' : 2, 
+                  'kernels': irm.runner.default_kernel_anneal(1.0, 20)
+              },
+    'debug_10' : {'ITERS' : 2, 
+                  'kernels': irm.runner.default_kernel_anneal(1.0, 20)
+              },
+    'debug_200' : {'ITERS' : 200, 
+                  'kernels': irm.runner.default_kernel_anneal(1.0, 160)
               }
     }
 
 
+# 
 
 
-@transform(td("retina.*.samples.organized/predlinks.pickle"),
+                  
+@transform(td("*.samples.organized/predlinks.pickle"),
            suffix("predlinks.pickle"), "roc.pdf")
+
 def plot_predlinks_roc(infile, outfile):
-    print "infile =", infile
     preddf = pickle.load(open(infile, 'r'))['df']
+
     preddf['tp'] = preddf['t_t'] / preddf['t_tot']
     preddf['fp'] = preddf['f_t'] / preddf['f_tot']
     preddf['frac_wrong'] = 1.0 - (preddf['t_t'] + preddf['f_f']) / (preddf['t_tot'] + preddf['f_tot'])
 
-    f = pylab.figure(figsize=(4, 4))
+    f = pylab.figure(figsize=(2, 2))
     ax = f.add_subplot(1, 1, 1)
     
     # group by cv set
     for row_name, cv_df in preddf.groupby('cv_idx'):
         cv_df_m = cv_df.groupby('pred_thold').mean().sort('fp')
-        ax.plot(cv_df_m['fp'], cv_df_m['tp'], alpha=0.5 )
+        ax.plot(cv_df_m['fp'], cv_df_m['tp'] , c='k', alpha=0.3)
+    
 
-    fname = infile[0].split('-')
+    fname = infile[0].split('-')[0]
     ax.set_title(fname)
+    ax.set_xticks([0.0, 1.0])
+    ax.set_yticks([0.0, 1.0])
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     f.savefig(outfile)
@@ -216,11 +172,10 @@ def plot_predlinks_roc(infile, outfile):
     
 
 
-@transform(td("retina.*.samples.organized/assign.pickle"),
+@transform(td("*.samples.organized/assign.pickle"),
            suffix("assign.pickle"), "ari.pdf")
 def plot_ari(infile, outfile):
     assigndf = pickle.load(open(infile, 'r'))['df']
-    print assigndf
     
     assigndf['ari'] = assigndf.apply(lambda x : metrics.adjusted_rand_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
 
@@ -233,7 +188,7 @@ def plot_ari(infile, outfile):
     #     print "PLOTTING", row_name
     #     cv_df = cv_df.sort('fp')
     #     ax.plot(cv_df['fp'], cv_df['tp'])
-    bins = np.linspace(0, 1.0, 30)
+    bins = np.linspace(0, 1.0, 31)
     ax.hist(assigndf['ari'], bins, normed=True)
 
     fname = infile[0].split('-')[0]
@@ -242,9 +197,12 @@ def plot_ari(infile, outfile):
     ax.set_xlim(0, 1)
     f.savefig(outfile)
 
-if __name__ == "__main__":    
-    pipeline_run([
-        plot_predlinks_roc, 
-        plot_ari
-              ]) # , multiprocess=3)
+if __name__ == "__main__":
+
+    pipeline_run([                  
+                  plot_predlinks_roc,
+                  plot_ari, 
+        
+              ])
+    
     

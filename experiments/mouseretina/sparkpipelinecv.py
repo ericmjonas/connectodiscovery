@@ -81,7 +81,7 @@ EXPERIMENTS = [
 THOLDS = [0.01, 0.1, 0.5, 1.0]
     
 MULAMBS = [1.0, 5.0, 10.0, 20.0, 50.0]
-PMAXS = [0.95] # , 0.9, 0.7]
+PMAXS = [0.95, 0.9] # , 0.9, 0.7]
 
 BB_ALPHAS = [1.0]
 BB_BETAS = [1.0]
@@ -119,8 +119,11 @@ for ti in [1]:
                 for var_scale in range(len(VAR_SCALES)):
                     for comp_k in COMP_KS:
                         bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (ti, ml_i, pmax_i, vars, var_scale, comp_k)
-                        EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
+                        #EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
                 
+# EXTRA ONE FROM MAKEFILE
+bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (1, 3, 1, 'xyz', 1,2)
+EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
 
             
 INIT_CONFIGS = {'fixed_20_100' : {'N' : 20, 
@@ -790,6 +793,7 @@ def samples_organize(infile, outfile):
 
 @follows(get_samples)
 @follows(get_cvdata)
+@follows(samples_organize)
 @subdivide(get_cvdata, formatter(".+/(?P<base>.*).cvdata.pickle"), 
            "{path[0]}/{base[0]}.samples.organized/*/cv.data",
            # Output parameter: Glob matches any number of output file names
