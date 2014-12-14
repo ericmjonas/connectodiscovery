@@ -238,7 +238,8 @@ exponential distance-link functions.  We additionally model cell body
 depth unimodally and synapse density profile multimodially (see
 Methods for mathematical details).
 
-\fxwarn{Do we talk about cross-validation early on? What about posterior uncertainty?}
+\fxwarning{Do we talk about cross-validation early on? What about
+  posterior uncertainty?}
 
 \subsection{Metrics}
 We focus on two questions we can ask from the learned model: which
@@ -260,7 +261,7 @@ cross validation on a given dataset, learn the resulting model, and
 use that model to predict the missing synapses. Each potential
 link between cells is assigned a probability, and we compute
 the area under the curve (AUC) for the resulting ROC curve. 
-\fxwarn{Add additional ARI} 
+\fxwarning{Add additional ARI} 
 \section*{Results}
 
 
@@ -310,7 +311,7 @@ and perform 10-way cross validation to predict link accuracy as well
 as ARI to the known (``true'') type, type spatial extent, and type
 number.
 
-\fxwarn{Add results} 
+\fxwarning{Add results} 
 
 
 \subsection{Sensitivity to Edge Effects} 
@@ -321,7 +322,7 @@ will be lost. We performed simulations to check if 1. edge effects
 could destroy spatial structure and if edge effects could introduce
 artifical, spurious spatial structure. 
 
-\fxwarn{Add ``intrudoce spatial structure where there is none}
+\fxwarning{Add ``intrudoce spatial structure where there is none}
 
 
 \begin{figure}
@@ -523,13 +524,14 @@ substantially less spatial regularity than the retina.
 \section*{Discussion}
 We have presented a machine learning technique that allows cell types
 and microcircuitry to be discovered from connectomics data.  We have
-shown its applicability to regularly structured laminar neural circuits like the retina, 
-as well as a less structured whole neuronal organism (\textit{C. elegans}) and an artificial processor. When compared to existing methods, we show how the
-incorporation of all of this data yields results that combine both
-high link-prediction accuracy and high agreement with human
-anatomists. We have found that combining the
-available data types allows us to discover cell types and
-microcircuitry that were known to exist in the systems based on
+shown its applicability to regularly structured laminar neural
+circuits like the retina, as well as a less structured whole neuronal
+organism (\textit{C. elegans}) and an artificial processor. When
+compared to existing methods, we show how the incorporation of all of
+this data yields results that combine both high link-prediction
+accuracy and high agreement with human anatomists. We have found that
+combining the available data types allows us to discover cell types
+and microcircuitry that were known to exist in the systems based on
 decades of previous research and allows good prediction of
 connectivity.
 
@@ -897,17 +899,6 @@ graph and the electrical network as undirected graph. We use the
 synapse counts with the logistic-distance poisson likelihood, scaling
 the counts by 4.0 to compensate for the Poisson's overdispersion.
 
-\subsection*{Microprocessor}
-We extracted the connection graph for the transistors in the MOS6502
-\autocite{visual6502source}. Each transistor has three terminals (gate,
-source, drain), but the methods of the original dataset were unable to
-consistently resolve which of the C1 and C2 terminals were source and
-drain, leading to ambiguity in our encoding. We identified a region
-consisting of three registers X, Y, and S via visual
-inspection and focused our efforts there. We created a total of six
-connectivity matrices by examining possible terminal pairings. One
-graph, for example, $R^{gc_1}(e_i, e_j)=1$ if transistor $e_j$ and
-$e_j$ are connected via pins $g$ and $c_1$. 
 
 
 % \begin{addendum}

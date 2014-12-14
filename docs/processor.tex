@@ -41,3 +41,16 @@ the bus. The repeat patterns of spatial connectivity are visible in
 figure~\ref{fig:mos6502}c, showing the man-made horizontal and
 vertical layout of the same types of transistors.
 
+\subsection*{Microprocessor}
+We extracted the connection graph for the transistors in the MOS6502
+\autocite{visual6502source}. Each transistor has three terminals (gate,
+source, drain), but the methods of the original dataset were unable to
+consistently resolve which of the C1 and C2 terminals were source and
+drain, leading to ambiguity in our encoding. We identified a region
+consisting of three registers X, Y, and S via visual
+inspection and focused our efforts there. We created a total of six
+connectivity matrices by examining possible terminal pairings. One
+graph, for example, $R^{gc_1}(e_i, e_j)=1$ if transistor $e_j$ and
+$e_j$ are connected via pins $g$ and $c_1$. 
+
+

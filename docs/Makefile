@@ -1,7 +1,7 @@
 
 OLDTEX=/usr/local/texlive/2011/bin/universal-darwin/
 
-all: getbib paper.pdf paper-main.pdf paper-supplemental.pdf
+all: getbib paper.pdf # paper-main.pdf paper-supplemental.pdf
 
 clean:
 	rm paper.pdf paper.bcf paper.blg paper.aux paper.bbl paper.log paper.out paper.run.xml arxiv.pdf arxiv.bcf arxiv.blg arxiv.aux arxiv.bbl arxiv.log
