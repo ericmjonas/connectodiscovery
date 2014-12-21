@@ -35,7 +35,7 @@ import irm.data
 import util
 from irm import rand
 
-#import predutil
+import predutil
 import boto
 from pyspark import SparkContext
 import cvpipelineutil as cv
@@ -1145,7 +1145,7 @@ def cvdata_organize(input_file, output_files, output_file_name_root):
         pickle.dump(data, open(os.path.join(output_file_name_root, a, "cv.data"), 'w'))
         pickle.dump(meta, open(os.path.join(output_file_name_root, a, "cv.meta"), 'w'))
 
-# PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
+PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
 
 @follows(samples_organize)
 @follows(cvdata_organize)
@@ -1190,7 +1190,10 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
             truth_mat = data_conn
         elif model_name == "LogisticDistance":
             truth_mat = data_conn['link']
-            # truth_mat_t_idx = np.argwhere(truth_mat.flatten() > 0).flatten()
+        elif model_name == "LogisticDistancePoisson":
+            # For count data we just binarize with > 0 
+
+            truth_mat = data_conn['link'] > 0 
 
         predlinks_outputs = []
         assignments_outputs = []

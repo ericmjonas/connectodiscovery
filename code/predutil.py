@@ -4,7 +4,8 @@ import models
 import glob
 import pandas
 
-def compute_prob_matrix(tgt_latent, tgt_data, model_name='LogisticDistance'):
+def compute_prob_matrix(tgt_latent, tgt_data, model_name='LogisticDistance', 
+                        relation_name = 'R1', domain_name = "d1"):
     """
     Compute the probability of a connection at EVERY LOCATION in the matrix
 
@@ -12,10 +13,10 @@ def compute_prob_matrix(tgt_latent, tgt_data, model_name='LogisticDistance'):
 
 
     """
-    ss = tgt_latent['relations']['R1']['ss']
-    ass = tgt_latent['domains']['d1']['assignment']
-    hps = tgt_latent['relations']['R1']['hps']
-    data_conn = tgt_data['relations']['R1']['data']
+    ss = tgt_latent['relations'][relation_name]['ss']
+    ass = tgt_latent['domains'][domain_name]['assignment']
+    hps = tgt_latent['relations'][relation_name]['hps']
+    data_conn = tgt_data['relations'][relation_name]['data']
     
     N = data_conn.shape[0]
     pred = np.zeros((N, N))
@@ -31,6 +32,15 @@ def compute_prob_matrix(tgt_latent, tgt_data, model_name='LogisticDistance'):
                 y = y * (hps['p_max'] - hps['p_min']) + hps['p_min']
             elif model_name == "BetaBernoulliNonConj":
                 y = c['p']
+            elif model_name == "LogisticDistancePoisson":
+                dist = data_conn['distance'][i, j]
+                conj_model = irm.models.LogisticDistancePoisson()
+                rate = conj_model.param_eval(dist, c, hps)
+
+                # We then use the rate and poisson cdf to compute P(k >0)
+                y = 1.0 - np.exp(-rate)
+                
+                
             else:
                 raise NotImplementedError()
             pred[i, j] = y
