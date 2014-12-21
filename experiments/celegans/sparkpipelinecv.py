@@ -71,7 +71,7 @@ CV_CONFIGS = {'cv_nfold_10' : {'N' : 10,
 INIT_CONFIGS = {'debug_2_100' : {'N' : 2, 
                                   'config' : {'type' : 'fixed', 
                                               'group_num' : 100}}, 
-                'fixed_100_200' : {'N' : 100, 
+                'fixed_20_200' : {'N' : 20, 
                                   'config' : {'type' : 'fixed', 
                                               'group_num' : 200}}, 
 }
@@ -81,12 +81,10 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 EXPERIMENTS = [
-    ('celegans.2r.ldp.00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
+    #('celegans.2r.ldp.00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
+    ('celegans.2r.ldp.00', 'cv_nfold_10', 'fixed_20_200', 'anneal_slow_800'), 
 
 
-    # ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_1000'), 
-    # ('retina.1.bb' , 'fixed_20_100', 'anneal_slow_1000'), 
-    #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
 ]
 
 
@@ -1172,6 +1170,7 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
     input_data = pickle.load(open(input_basename + ".data"))
     input_latent = pickle.load(open(input_basename + ".latent"))
     for relation_name in input_data['relations']:
+        print "computing predlinks for relation", relation_name
         data_conn = input_data['relations'][relation_name]['data']
         model_name= input_data['relations'][relation_name]['model']
 
@@ -1217,16 +1216,15 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
             heldout_true_vals_f_idx = np.argwhere(heldout_true_vals == 0).flatten()
 
             sample_file_str =os.path.join(cv_dir, r"[0-9]*.pickle")
-            print "files are"
+
             for sample_name in glob.glob(sample_file_str):
                 chain_i = int(os.path.basename(sample_name)[:-(len('.pickle'))])
-                print chain_i
+
 
                 sample = pickle.load(open(sample_name, 'r'))
                 inf_results = sample[1]['res'] # state
                 irm_latent_samp = inf_results[1]
                 scores = inf_results[0]
-                print irm_latent_samp.keys()
                 # compute full prediction matrix 
                 pred = predutil.compute_prob_matrix(irm_latent_samp, input_data, 
                                                     model_name)

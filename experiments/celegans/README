@@ -13,6 +13,10 @@ Todo:
 of relational data
 
 
+Cloud runner:
 SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
 
+Local runner:
+
+SPARK_DRIVER_MEMORY=4g ~/projects/sparkutil/src/spark-1.1.0-bin-cdh4/bin/spark-submit  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000  --conf spark.executor.memory=4g --conf spark.python.worker.memory=4g --py-files=../../code/cvpipelineutil.py --master local[2] sparkpipelinecv.py
 
