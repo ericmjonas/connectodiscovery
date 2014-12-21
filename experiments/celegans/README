@@ -1,0 +1,18 @@
+Creation of the c. elegans. Migrated to spark pipeline.
+
+
+celegans.2r.ldp.02.data-fixed_100_200-anneal_slow_800.circos.0
+
+Todo:
+
+1. turn the DB into the format expected by the latent-creator
+
+2. port the latent-creator
+
+3. handle the fact that we're cross-validating a significantly different set
+of relational data
+
+
+SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+
+
