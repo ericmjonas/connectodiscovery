@@ -31,8 +31,8 @@ Pipeline:
 
 To set up cluster
 
-fab s.launch:10,1.68
+fab s.launch:20,1.68
 
-fab -R slaves s.push_aws_creds s.worker_disks add_packages deploy_files
+fab -P -R slaves s.push_aws_creds s.worker_disks add_packages deploy_files
 
 fab -R master s.push_aws_creds s.connect_master_data add_packages

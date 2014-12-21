@@ -9,25 +9,47 @@ DEFAULT_RELATION = "ParRelation"
 def create_cv_pure(data, meta, 
                    cv_i, cv_config_name, cv_config):
     """ 
-    Creates a single cross-validated data set 
+    Creates a single cross-validated data set for all relations
+    with 2d data
+
+    # note that we mask the same points for each 
+    # relation -- so we really are holding out the data
+
     """
 
-    shape = data['relations']['R1']['data'].shape
-    N =  shape[0] * shape[1]
-    if cv_config['type'] == 'nfold':
-        np.random.seed(0) # set the seed
+    for relation_name in data['relations']:
+        rd = data['relations'][relation_name]['data']
+        shape = rd.shape
+        if len(shape) > 1:
+            # I'm not sure how we encode the other multi-feature
+            # relations so this is a sentinel
+            assert shape[0] > 1
+            assert shape[1] > 1 
 
-        perm = np.random.permutation(N)
-        subset_size = N / cv_config['N']
-        subset = perm[cv_i * subset_size:(cv_i+1)*subset_size]
-        
-        observed = np.ones(N, dtype=np.uint8)
-        observed[subset] = 0
-        data['relations']['R1']['observed'] = np.reshape(observed, shape)
+            
 
-    else:
-        raise Exception("Unknown cv type")
-    
+            N =  shape[0] * shape[1]
+            if cv_config['type'] == 'nfold':
+                np.random.seed(0) # set the seed
+
+                perm = np.random.permutation(N)
+                subset_size = N / cv_config['N']
+                subset = perm[cv_i * subset_size:(cv_i+1)*subset_size]
+
+                observed = np.ones(N, dtype=np.uint8)
+                observed[subset] = 0
+                data['relations'][relation_name]['observed'] = np.reshape(observed, shape)
+
+            elif cv_config['type'] == 'noop':
+                # no cv
+                observed = np.ones(N, dtype=np.uint8)
+                observed[subset] = 0
+                data['relations'][relation_name]['observed'] = np.reshape(observed, shape)
+
+            else:
+                raise Exception("Unknown cv type")
+        else:
+            print "NOT PERFORMING CV ON NON-GRAPH RELATION %s DATA" % relation_name
     
 
     meta = copy.deepcopy(meta)
