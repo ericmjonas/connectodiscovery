@@ -1,6 +1,12 @@
 """
 SPARK_DRIVER_MEMORY=4g ~/projects/sparktest/src/spark-1.1.0-bin-cdh4/bin/spark-submit  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000  --conf spark.executor.memory=4g --conf spark.python.worker.memory=4g --master local[2]
 
+
+remote:
+
+SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipeline.py
+
+
 """
 import sys
 import matplotlib
@@ -64,8 +70,9 @@ WORKING_DIR = "sparkdata"
 S3_BUCKET = "jonas-testbucket2"
 S3_PATH= "netmotifs/paper/experiments/synthdifferent"
 
+JITTER = 0.4
 
-
+DATASET_N = 1
 
     
 def td(fname): # "to directory"
@@ -76,21 +83,10 @@ def get_dataset(data_name):
     return td("%s.data" %  data_name)
 
 EXPERIMENTS = [
-    ('srm_00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
-
-    #('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    #('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    # ('lpcm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
-    # ('mm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
-
-
-    #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
 ]
 
 # Addditional experiments
-for seed in range(10):
+for seed in range(DATASET_N):
     for model in ['srm', 'sbmnodist', 'lpcm', 'mm']:
         
         EXPERIMENTS.append(('%s_%02d' %(model, seed),
@@ -171,8 +167,6 @@ def create_data_srm(infile, outfile, seed):
     CLASS_N = 4
     SIDE_N = 10
     nonzero_frac = 0.8
-    JITTER = 0.01
-
 
     for c1 in range(CLASS_N):
         for c2 in range(CLASS_N):
@@ -180,7 +174,7 @@ def create_data_srm(infile, outfile, seed):
                 conn_config[(c1, c2)] = (np.random.uniform(1.0, 4.0), 
                                          np.random.uniform(0.1, 0.9))
     if len(conn_config) == 0:
-        conn_config[(0, 0)] = (np.random.uniform(1.0, 4.0), 
+        conn_config[(0, 0)] = (np.random.uniform(1.0, 5.0), 
                                np.random.uniform(0.4, 0.9))
 
     nodes_with_meta, connectivity = irm.data.generate.c_class_neighbors(SIDE_N, 
@@ -213,24 +207,17 @@ def create_data_sbm_nodist(infile, outfile, seed):
     CLASS_N = 4
     SIDE_N = 10
     nonzero_frac = 0.8
-    JITTER = 0.01
-
 
     for c1 in range(CLASS_N):
         for c2 in range(CLASS_N):
             if np.random.rand() < nonzero_frac:
                 conn_config[(c1, c2)] = (100, # guarantee that we always have conn
                                          np.random.uniform(0.1, 0.9))
-    if len(conn_config) == 0:
-        conn_config[(0, 0)] = (np.random.uniform(1.0, 4.0), 
-                               np.random.uniform(0.4, 0.9))
 
     nodes_with_meta, connectivity = irm.data.generate.c_class_neighbors(SIDE_N, 
                                                                         conn_config,
                                                                         JITTER=JITTER)
 
-
-    
     ai = np.random.permutation(len(nodes_with_meta))
     nodes_with_meta = nodes_with_meta[ai]
     connectivity = connectivity[ai]
@@ -253,10 +240,10 @@ def lpcm_params():
 def create_data_latent_position(infile, outfile, seed):
     np.random.seed(seed)
 
-    LATENT_D = 3
+    LATENT_D = 2
     CLASS_N = 4
     SIDE_N = 10 # cells per class
-    latent_class_variance = 5.0
+    latent_class_variance = 0.2
     # draw class_n isotropic gaussians
 
     class_params = {}
@@ -264,10 +251,9 @@ def create_data_latent_position(infile, outfile, seed):
         p = {'mu' : np.random.normal(0, 1, LATENT_D), 
              'var' : np.eye(LATENT_D) * latent_class_variance}
         class_params[i] = p 
-    
+
 
     nonzero_frac = 0.8
-    JITTER = 0.01
 
     node_base = irm.data.generate.create_nodes_grid(SIDE_N, CLASS_N, JITTER)
     NODE_N = len(node_base)
@@ -282,26 +268,25 @@ def create_data_latent_position(infile, outfile, seed):
         c = nodes_with_meta[i]['class']
         latentpos = np.random.multivariate_normal(class_params[c]['mu'],
                                                    class_params[c]['var'])
-        nodes_with_meta[i]['latentpos'] = latentpos
-        
+
+        nodes_with_meta[i]['latentpos'][:] = latentpos
+
+    beta = 2.0
 
     # now the connectivity
     connectivity = np.zeros((NODE_N, NODE_N), dtype=np.uint8)
-                             
+
     for i in range(NODE_N):
         for j in range(NODE_N):
             lp1 = nodes_with_meta['latentpos'][i]
             lp2 = nodes_with_meta['latentpos'][j]
-            p1 = nodes_with_meta['pos'][i]
-            p2 = nodes_with_meta['pos'][j]
-            mu = dist(lp1, lp2)
-            d = dist(p1, p2)
-            # now the connectivity function is that the mu is set by
-            p = irm.util.logistic(d, mu, 1./mu)
-            
+
+            latent_dist = dist(lp1, lp2)
+
+            p = np.exp(beta - latent_dist)
+
             connectivity[i, j] = np.random.rand() < p
 
-            
     ai = np.random.permutation(len(nodes_with_meta))
     nodes_with_meta = nodes_with_meta[ai]
     connectivity = connectivity[ai]
@@ -336,7 +321,6 @@ def create_data_mixed_membership(infile, outfile, seed):
     CLASS_N = 2**CLASS_ATTR_N
     SIDE_N = 5
     nonzero_frac = 0.4
-    JITTER = 0.01
 
 
     for c1 in range(CLASS_N):
@@ -431,6 +415,7 @@ def create_data_latent(infile, (data_filename, latent_filename,
 
         
 @follows(create_data_latent)
+@jobs_limit(1)
 @files(list(cv.experiment_generator(EXPERIMENTS, CV_CONFIGS,
                                     INIT_CONFIGS, get_dataset, td)))
 def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits), 
@@ -580,13 +565,13 @@ def cvdata_organize(input_file, output_files, output_file_name_root):
 @collate("sparkdata/*.samples.organized/*",
          regex(r"(sparkdata/.+.samples.organized)/(\d+)"),
          #[td(r"\1-\2\4.predlinks"), td(r"\1-\2\4.assign")])
-         [r"\1/predlinks.pickle", r'\1/assign.pickle'])
-def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
-                                          assign_outfile)):
+         
+         r'\1/aggstats.pickle')
+def cv_collate_aggstats(cv_dirs,  assign_outfile):
+                                         
     """
     aggregate across samples and cross-validations
     """
-    print "THIS IS A RUN", predlinks_outfile
     for d in cv_dirs:
         print "cv dir", d
 
@@ -611,7 +596,7 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
         truth_mat = data_conn['link']
         # truth_mat_t_idx = np.argwhere(truth_mat.flatten() > 0).flatten()
 
-    predlinks_outputs = []
+    #predlinks_outputs = []
     assignments_outputs = []
 
 
@@ -648,35 +633,37 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
                                                 model_name)
             pf_heldout = pred.flatten()[heldout_idx]
 
-            for pred_thold  in PRED_EVALS:
-                pm = pf_heldout[heldout_true_vals_t_idx]
-                t_t = np.sum(pm >=  pred_thold)
-                t_f = np.sum(pm <= pred_thold)
-                pm = pf_heldout[heldout_true_vals_f_idx]
-                f_t = np.sum(pm >= pred_thold)
-                f_f = np.sum(pm <= pred_thold)
-                predlinks_outputs.append({'chain_i' : chain_i, 
-                                          'score' : scores[-1], 
-                                          'pred_thold' : pred_thold,
-                                          'cv_idx' : cv_idx, 
-                                          't_t' : t_t, 
-                                          't_f' : t_f, 
-                                          'f_t' : f_t, 
-                                          'f_f' : f_f, 
-                                          't_tot' : len(heldout_true_vals_t_idx), 
-                                          'f_tot' : len(heldout_true_vals_f_idx)
-                                      })
+            # for pred_thold  in PRED_EVALS:
+            #     pm = pf_heldout[heldout_true_vals_t_idx]
+            #     t_t = np.sum(pm >=  pred_thold)
+            #     t_f = np.sum(pm <= pred_thold)
+            #     pm = pf_heldout[heldout_true_vals_f_idx]
+            #     f_t = np.sum(pm >= pred_thold)
+            #     f_f = np.sum(pm <= pred_thold)
+            #     predlinks_outputs.append({'chain_i' : chain_i, 
+            #                               'score' : scores[-1], 
+            #                               'pred_thold' : pred_thold,
+            #                               'cv_idx' : cv_idx, 
+            #                               't_t' : t_t, 
+            #                               't_f' : t_f, 
+            #                               'f_t' : f_t, 
+            #                               'f_f' : f_f, 
+            #                               't_tot' : len(heldout_true_vals_t_idx), 
+            #                               'f_tot' : len(heldout_true_vals_f_idx)
+            #                           })
             assignments_outputs.append({'chain_i' : chain_i,
                                         'score' : scores[-1],
                                         'cv_idx' : cv_idx, 
                                         'true_assign' : true_assign,
+                                        'heldout_link_predprob': pf_heldout, 
+                                        'heldout_link_truth' : heldout_true_vals, 
                                         'assign' : irm_latent_samp['domains']['d1']['assignment']})
                                             
 
 
-    predlinks_df = pandas.DataFrame(predlinks_outputs)
-    pickle.dump({'df' : predlinks_df}, 
-                 open(predlinks_outfile, 'w'))
+    # predlinks_df = pandas.DataFrame(predlinks_outputs)
+    # pickle.dump({'df' : predlinks_df}, 
+    #              open(predlinks_outfile, 'w'))
 
     a_df = pandas.DataFrame(assignments_outputs)
     pickle.dump({'df' : a_df}, 
@@ -684,27 +671,27 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
 
                   
 
-@transform(cv_collate_predlinks_assign, suffix("predlinks.pickle"), "roc.pdf")
-def plot_predlinks_roc(infile, outfile):
-    preddf = pickle.load(open(infile[0], 'r'))['df']
-    preddf['tp'] = preddf['t_t'] / preddf['t_tot']
-    preddf['fp'] = preddf['f_t'] / preddf['f_tot']
-    preddf['frac_wrong'] = 1.0 - (preddf['t_t'] + preddf['f_f']) / (preddf['t_tot'] + preddf['f_tot'])
+# @transform(cv_collate_predlinks_assign, suffix("predlinks.pickle"), "roc.pdf")
+# def plot_predlinks_roc(infile, outfile):
+#     preddf = pickle.load(open(infile[0], 'r'))['df']
+#     preddf['tp'] = preddf['t_t'] / preddf['t_tot']
+#     preddf['fp'] = preddf['f_t'] / preddf['f_tot']
+#     preddf['frac_wrong'] = 1.0 - (preddf['t_t'] + preddf['f_f']) / (preddf['t_tot'] + preddf['f_tot'])
 
-    f = pylab.figure(figsize=(4, 4))
-    ax = f.add_subplot(1, 1, 1)
+#     f = pylab.figure(figsize=(4, 4))
+#     ax = f.add_subplot(1, 1, 1)
     
-    # group by cv set
-    for row_name, cv_df in preddf.groupby('cv_idx'):
-        cv_df_m = cv_df.groupby('pred_thold').mean().sort('fp')
-        ax.plot(cv_df_m['fp'], cv_df_m['tp'] )
+#     # group by cv set
+#     for row_name, cv_df in preddf.groupby('cv_idx'):
+#         cv_df_m = cv_df.groupby('pred_thold').mean().sort('fp')
+#         ax.plot(cv_df_m['fp'], cv_df_m['tp'] )
     
 
-    fname = infile[0].split('-')[0]
-    ax.set_title(fname)
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
-    f.savefig(outfile)
+#     fname = infile[0].split('-')[0]
+#     ax.set_title(fname)
+#     ax.set_xlim(0, 1)
+#     ax.set_ylim(0, 1)
+#     f.savefig(outfile)
 
 # @collate("sparkdata/*.samples.organized",
 #          regex(r"data/(.+)-(.+).(\d\d)(.cv.*).samples"),
@@ -715,30 +702,30 @@ def plot_predlinks_roc(infile, outfile):
     
 
 
-@transform(cv_collate_predlinks_assign, suffix("predlinks.pickle"), "ari.pdf")
-def plot_ari(infile, outfile):
-    assigndf = pickle.load(open(infile[1], 'r'))['df']
-    print assigndf
+# @transform(cv_collate_predlinks_assign, suffix("predlinks.pickle"), "ari.pdf")
+# def plot_ari(infile, outfile):
+#     assigndf = pickle.load(open(infile[1], 'r'))['df']
+#     print assigndf
     
-    assigndf['ari'] = assigndf.apply(lambda x : metrics.adjusted_rand_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+#     assigndf['ari'] = assigndf.apply(lambda x : metrics.adjusted_rand_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
 
     
-    f = pylab.figure(figsize=(4, 4))
-    ax = f.add_subplot(1, 1, 1)
+#     f = pylab.figure(figsize=(4, 4))
+#     ax = f.add_subplot(1, 1, 1)
     
-    # # group by cv set
-    # for row_name, cv_df in preddf.groupby('cv_idx'):
-    #     print "PLOTTING", row_name
-    #     cv_df = cv_df.sort('fp')
-    #     ax.plot(cv_df['fp'], cv_df['tp'])
-    bins = np.linspace(0, 1.0, 11)
-    ax.hist(assigndf['ari'], bins, normed=True)
+#     # # group by cv set
+#     # for row_name, cv_df in preddf.groupby('cv_idx'):
+#     #     print "PLOTTING", row_name
+#     #     cv_df = cv_df.sort('fp')
+#     #     ax.plot(cv_df['fp'], cv_df['tp'])
+#     bins = np.linspace(0, 1.0, 11)
+#     ax.hist(assigndf['ari'], bins, normed=True)
 
-    fname = infile[0].split('-')[0]
-    ax.set_title(fname)
+#     fname = infile[0].split('-')[0]
+#     ax.set_title(fname)
 
-    ax.set_xlim(0, 1)
-    f.savefig(outfile)
+#     ax.set_xlim(0, 1)
+#     f.savefig(outfile)
 
 if __name__ == "__main__":
 
@@ -753,7 +740,7 @@ if __name__ == "__main__":
         samples_organize,
         get_cvdata,
         cvdata_organize,
-        #cv_collate_predlinks_assign,
+        cv_collate_aggstats,
         # create_inits,
                   # get_results,
                   # cv_collate, 
@@ -761,6 +748,6 @@ if __name__ == "__main__":
         #plot_predlinks_roc,
         #plot_ari, 
         # plot_circos_latent,
-    ])
+    ], multiprocess=6)
     
     

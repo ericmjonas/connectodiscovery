@@ -3,6 +3,10 @@ To run locally
 
 SPARK_DRIVER_MEMORY=4g ~/projects/sparkutil/src/spark-1.1.0-bin-cdh4/bin/spark-submit  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000  --conf spark.executor.memory=4g --conf spark.python.worker.memory=4g --master local[2] sparkpipelinecv.py
 
+To run remotely:
+
+SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-subm --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+
 
 """
 import sys
@@ -83,6 +87,10 @@ def td(fname): # "to directory"
 EXPERIMENTS = [
     #('celegans.2r.ldp.00', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
     ('celegans.2r.ldp.00', 'cv_nfold_10', 'fixed_20_200', 'anneal_slow_800'), 
+    ('celegans.2r.ldp.01', 'cv_nfold_10', 'fixed_20_200', 'anneal_slow_800'), 
+    ('celegans.2r.ldp.02', 'cv_nfold_10', 'fixed_20_200', 'anneal_slow_800'), 
+    ('celegans.2r.ldp.03', 'cv_nfold_10', 'fixed_20_200', 'anneal_slow_800'), 
+    ('celegans.2r.ldp.04', 'cv_nfold_10', 'fixed_20_200', 'anneal_slow_800'), 
 
 
 ]

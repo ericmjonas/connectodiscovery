@@ -17,13 +17,7 @@ from matplotlib import pylab
 import matplotlib
 import pandas
 import colorbrewer
-from nose.tools import assert_equal 
 from sklearn import metrics
-import preprocess
-import sqlite3
-import connattribio 
-
-import matplotlib.gridspec as gridspec
 import models
 import multyvac
 
@@ -62,77 +56,7 @@ def td(fname): # "to directory"
 def get_dataset(data_name):
     return glob(td("%s.data" %  data_name))
 
-EXPERIMENTS = [
-    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_20'), 
-    ('srm', 'cv_nfold_2', 'debug_2_100', 'debug_10'), 
-    ('srm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    ('sbmnodist', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    ('lpcm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    ('mm', 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'), 
-    # ('lpcm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
-    # ('mm', 'cx_4_5', 'debug_2_100', 'debug_200'), 
 
-
-    #('retina.xsoma' , 'fixed_20_100', 'anneal_slow_400'), 
-]
-
-PRED_EVALS= np.logspace(-4, 0, 41) # np.linspace(0, 1.0, 41)
-
-
-INIT_CONFIGS = {'fixed_20_100' : {'N' : 20, 
-                                  'config' : {'type' : 'fixed', 
-                                              'group_num' : 100}}, 
-                'debug_2_100' : {'N' : 2, 
-                                 'config' : {'type' : 'fixed', 
-                                             'group_num' : 100}}, 
-            }
-
-CV_CONFIGS = {'cv_nfold_10' : {'N' : 10,
-                               'type' : 'nfold'},
-              'cv_nfold_2' : {'N' : 2,
-                               'type' : 'nfold'},
-          }
-
-
-slow_anneal = irm.runner.default_kernel_anneal()
-slow_anneal[0][1]['anneal_sched']['start_temp'] = 64.0
-slow_anneal[0][1]['anneal_sched']['iterations'] = 800
-
-
-
-def generate_ld_hypers():
-    space_vals =  irm.util.logspace(1.0, 80.0, 40)
-    p_mins = np.array([0.001, 0.005, 0.01])
-    p_maxs = np.array([0.99, 0.95, 0.90, 0.80])
-    res = []
-    for s in space_vals:
-        for p_min in p_mins:
-            for p_max in p_maxs:
-                res.append({'lambda_hp' : s, 'mu_hp' : s, 
-                           'p_min' : p_min, 'p_max' : p_max})
-    return res
-
-
-slow_anneal[0][1]['subkernels'][-1][1]['grids']['LogisticDistance'] = generate_ld_hypers()
-
-
-
-KERNEL_CONFIGS = {
-    'anneal_slow_1000' : {'ITERS' : 1000, 
-                         'kernels' : slow_anneal},
-    'debug_20' : {'ITERS' : 2, 
-                  'kernels': irm.runner.default_kernel_anneal(1.0, 20)
-              },
-    'debug_10' : {'ITERS' : 2, 
-                  'kernels': irm.runner.default_kernel_anneal(1.0, 20)
-              },
-    'debug_200' : {'ITERS' : 200, 
-                  'kernels': irm.runner.default_kernel_anneal(1.0, 160)
-              }
-    }
-
-
-# 
 
 
                   
@@ -163,6 +87,8 @@ def plot_predlinks_roc(infile, outfile):
     ax.set_ylim(0, 1)
     f.savefig(outfile)
 
+    pylab.close(f)
+
 # @collate("sparkdata/*.samples.organized",
 #          regex(r"data/(.+)-(.+).(\d\d)(.cv.*).samples"),
 #          [td(r"\1-\2\4.predlinks"), td(r"\1-\2\4.assign")])
@@ -183,11 +109,6 @@ def plot_ari(infile, outfile):
     f = pylab.figure(figsize=(4, 4))
     ax = f.add_subplot(1, 1, 1)
     
-    # # group by cv set
-    # for row_name, cv_df in preddf.groupby('cv_idx'):
-    #     print "PLOTTING", row_name
-    #     cv_df = cv_df.sort('fp')
-    #     ax.plot(cv_df['fp'], cv_df['tp'])
     bins = np.linspace(0, 1.0, 31)
     ax.hist(assigndf['ari'], bins, normed=True)
 
@@ -197,11 +118,82 @@ def plot_ari(infile, outfile):
     ax.set_xlim(0, 1)
     f.savefig(outfile)
 
+    pylab.close(f)
+
+
+
+def extract_metadata(fname):
+    # extract metadata from the filename
+    dataset_name = os.path.basename(os.path.dirname(fname))[:-len('.samples.organized')]
+    fields = dataset_name.split('-')
+
+    # skip the stupid non-replicated ones
+    if "_" not in fields[0]:
+        return {}
+
+    source_model, rep_id = fields[0].split("_")
+    meta = {}
+    meta['source_model'] = source_model
+    meta['rep_id'] = rep_id
+
+    meta['cv_type'] = fields[1]
+    meta['init_config'] = fields[2]
+    meta['kernel_config'] = fields[3]
+
+    return meta
+@merge(td("*.samples.organized/assign.pickle"),
+         "aggregate.stats.pickle")
+def aggregate_stats(infiles, outfile):
+    """
+    Combine all the aggstats into a single file
+    
+    Compute summary statistics
+    """
+
+    res = []
+    for infile in infiles:
+        d = pickle.load(open(infile, 'r'))
+
+        assigndf = d['df']
+
+        m = extract_metadata(infile)
+        if len(m) == 0:
+            # skip the stupid non-replicated ones
+            continue 
+
+        for k, v in m.iteritems():
+            assigndf[k] = v
+        
+        # compute the statistics
+        assigndf['ari'] = assigndf.apply(lambda x : metrics.adjusted_rand_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+
+        assigndf['homogeneity'] = assigndf.apply(lambda x : metrics.homogeneity(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+
+        assigndf['completeness'] = assigndf.apply(lambda x : metrics.completeness(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+
+
+
+        assigndf['type_n_true'] = assigndf.apply(lambda x : len(np.unique(x['true_assign'])), axis=1)
+        assigndf['type_n_learned'] = assigndf.apply(lambda x : len(np.unique(x['assign'])), axis=1)
+        assigndf['auc'] = assigndf.apply(lambda x: metrics.roc_auc_score(x['heldout_link_truth'], x['heldout_link_predprob']))
+        assigndf['auc'] = assigndf.apply(lambda x: metrics.f1_score(x['heldout_link_truth'], x['heldout_link_predprob']))
+
+        # 
+
+        # fraction of mass in top N types
+        
+        res.append(assigndf)
+    alldf = pandas.concat(res)
+    pickle.dump(alldf, open(outfile, 'w'), -1)
+        
+
+
 if __name__ == "__main__":
 
     pipeline_run([                  
-                  plot_predlinks_roc,
-                  plot_ari, 
+        plot_predlinks_roc,
+        plot_ari, 
+        aggregate_stats
         
               ])
     

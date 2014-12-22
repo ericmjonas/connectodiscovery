@@ -115,6 +115,9 @@ def get_data():
                 
                  ('experiments/synthdifferent/sparkdata',
                   'experiments/synthdifferent/',
+                  ['aggstats.pickle']),
+                 ('experiments/celegans/sparkdatacv',
+                  'experiments/celegans/',
                   ['predlinks.pickle', 'assign.pickle'])]
     
    
