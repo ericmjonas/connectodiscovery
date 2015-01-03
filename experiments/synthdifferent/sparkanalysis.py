@@ -141,7 +141,8 @@ def extract_metadata(fname):
     meta['kernel_config'] = fields[3]
 
     return meta
-@merge(td("*.samples.organized/assign.pickle"),
+
+@merge(td("*.samples.organized/aggstats.pickle"),
          "aggregate.stats.pickle")
 def aggregate_stats(infiles, outfile):
     """
@@ -153,8 +154,10 @@ def aggregate_stats(infiles, outfile):
     res = []
     for infile in infiles:
         d = pickle.load(open(infile, 'r'))
-
+        print "The file is", infile
         assigndf = d['df']
+        print assigndf.dtypes
+        print assigndf['heldout_link_predprob']
 
         m = extract_metadata(infile)
         if len(m) == 0:
@@ -167,16 +170,16 @@ def aggregate_stats(infiles, outfile):
         # compute the statistics
         assigndf['ari'] = assigndf.apply(lambda x : metrics.adjusted_rand_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
 
-        assigndf['homogeneity'] = assigndf.apply(lambda x : metrics.homogeneity(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+        assigndf['homogeneity'] = assigndf.apply(lambda x : metrics.homogeneity_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
 
-        assigndf['completeness'] = assigndf.apply(lambda x : metrics.completeness(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
+        assigndf['completeness'] = assigndf.apply(lambda x : metrics.completeness_score(x['true_assign'], irm.util.canonicalize_assignment(x['assign'])), axis=1)
 
 
 
         assigndf['type_n_true'] = assigndf.apply(lambda x : len(np.unique(x['true_assign'])), axis=1)
         assigndf['type_n_learned'] = assigndf.apply(lambda x : len(np.unique(x['assign'])), axis=1)
-        assigndf['auc'] = assigndf.apply(lambda x: metrics.roc_auc_score(x['heldout_link_truth'], x['heldout_link_predprob']))
-        assigndf['auc'] = assigndf.apply(lambda x: metrics.f1_score(x['heldout_link_truth'], x['heldout_link_predprob']))
+        assigndf['auc'] = assigndf.apply(lambda x: metrics.roc_auc_score(x['heldout_link_truth'], x['heldout_link_predprob']), axis=1)
+        #assigndf['f1'] = assigndf.apply(lambda x: metrics.f1_score(x['heldout_link_truth'], x['heldout_link_predprob']), axis=1)
 
         # 
 

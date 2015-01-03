@@ -5,7 +5,7 @@ SPARK_DRIVER_MEMORY=4g ~/projects/sparkutil/src/spark-1.1.0-bin-cdh4/bin/spark-s
 
 To run remotely:
 
-SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-subm --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
 
 
 """

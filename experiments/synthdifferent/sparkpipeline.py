@@ -72,7 +72,7 @@ S3_PATH= "netmotifs/paper/experiments/synthdifferent"
 
 JITTER = 0.4
 
-DATASET_N = 1
+DATASET_N = 10
 
     
 def td(fname): # "to directory"
@@ -271,7 +271,7 @@ def create_data_latent_position(infile, outfile, seed):
 
         nodes_with_meta[i]['latentpos'][:] = latentpos
 
-    beta = 2.0
+    beta = 1.0
 
     # now the connectivity
     connectivity = np.zeros((NODE_N, NODE_N), dtype=np.uint8)
@@ -484,7 +484,7 @@ def spark_run_experiments(data_filename, (out_samples, out_cv_data, out_inits),
     sc.stop()
 
     
-
+@jobs_limit(1)
 @transform(spark_run_experiments, suffix('.samples'), '.samples.pickle')
 def get_samples((exp_samples, exp_cvdata, exp_inits), out_filename):
     sample_metadata = pickle.load(open(exp_samples, 'r'))
@@ -496,7 +496,7 @@ def get_samples((exp_samples, exp_cvdata, exp_inits), out_filename):
     
     sc.stop()
 
-    
+@jobs_limit(1) 
 @transform(spark_run_experiments, suffix('.samples'), '.cvdata.pickle')
 def get_cvdata((exp_samples, exp_cvdata, exp_inits), out_filename):
     cvdata_metadata = pickle.load(open(exp_cvdata, 'r'))
@@ -748,6 +748,6 @@ if __name__ == "__main__":
         #plot_predlinks_roc,
         #plot_ari, 
         # plot_circos_latent,
-    ], multiprocess=6)
+    ])
     
     
