@@ -1275,6 +1275,112 @@ def cv_collate_predlinks_assign(cv_dirs, (predlinks_outfile,
                  open(assign_outfile, 'w'))
 
                   
+@follows(samples_organize)
+@follows(cvdata_organize)
+@collate("sparkdatacv/*.samples.organized/*",
+         regex(r"(sparkdatacv/.+.samples.organized)/(\d+)"),
+         #[td(r"\1-\2\4.predlinks"), td(r"\1-\2\4.assign")])
+         
+         r'\1/aggstats.pickle')
+def cv_collate_aggstats(cv_dirs,  assign_outfile):
+                                         
+    """
+    aggregate across samples and cross-validations
+    """
+    for d in cv_dirs:
+        print "cv dir", d
+
+    
+    base = os.path.dirname(cv_dirs[0])[:-len('.samples.organized')]
+    s = base.split('-')
+
+    input_basename = s[0]
+    input_data = pickle.load(open(input_basename + ".data"))
+    input_latent = pickle.load(open(input_basename + ".latent"))
+
+    input_meta = pickle.load(open(input_basename + ".meta"))['infile']
+    meta = pickle.load(open(input_meta, 'r'))
+
+
+    assignments_outputs = []
+
+    for relation_name in input_data['relations']:
+        print "computing predlinks for relation", relation_name
+        data_conn = input_data['relations'][relation_name]['data']
+        model_name= input_data['relations'][relation_name]['model']
+
+
+        print "META IS", meta.keys()
+        print meta['neurons'].dtypes
+
+        N = len(data_conn)
+
+        true_assign = meta['neurons']['cell_class'] # input_latent['domains']['d1']['assignment']
+
+
+        print "for", input_basename, "there are", len(np.unique(true_assign)), "classes"
+        if model_name == "BetaBernoulliNonConj":
+            truth_mat = data_conn
+        elif model_name == "LogisticDistance":
+            truth_mat = data_conn['link']
+        elif model_name == "LogisticDistancePoisson":
+            # For count data we just binarize with > 0 
+
+            truth_mat = data_conn['link'] > 0 
+
+
+
+        for cv_dir in cv_dirs:
+            cv_data = pickle.load(open(os.path.join(cv_dir, 'cv.data'), 'r'))
+            # get the cv idx for later use
+            cv_idx = int(os.path.basename(cv_dir))
+
+
+
+
+            # FIGURE OUT WHICH ENTRIES WERE MISSING
+            heldout_idx = np.argwhere((cv_data['relations'][relation_name]['observed'].flatten() == 0)).flatten()
+            heldout_true_vals = truth_mat.flatten()[heldout_idx]
+
+            heldout_true_vals_t_idx = np.argwhere(heldout_true_vals > 0).flatten()
+            heldout_true_vals_f_idx = np.argwhere(heldout_true_vals == 0).flatten()
+
+            sample_file_str =os.path.join(cv_dir, r"[0-9]*.pickle")
+            print "files are", sample_file_str
+            for sample_name in glob.glob(sample_file_str):
+                chain_i = int(os.path.basename(sample_name)[:-(len('.pickle'))])
+
+                sample = pickle.load(open(sample_name, 'r'))
+                inf_results = sample[1]['res'] # state
+                irm_latent_samp = inf_results[1]
+                scores = inf_results[0]
+
+                pred = predutil.compute_prob_matrix(irm_latent_samp, input_data, 
+                                                    model_name)
+                pf_heldout = pred.flatten()[heldout_idx]
+                
+
+                assignments_outputs.append({'chain_i' : chain_i,
+                                            'score' : scores[-1],
+                                            'cv_idx' : cv_idx, 
+                                            'true_assign' : true_assign,
+                                            'heldout_link_predprob': pf_heldout, 
+                                            'heldout_link_truth' : heldout_true_vals, 
+                                            'assign' : irm_latent_samp['domains']['d1']['assignment'], 
+                                            'relation_name' : relation_name})
+                                            
+
+
+    # predlinks_df = pandas.DataFrame(predlinks_outputs)
+    # pickle.dump({'df' : predlinks_df}, 
+    #              open(predlinks_outfile, 'w'))
+
+    a_df = pandas.DataFrame(assignments_outputs)
+    print "a_df.relation_name.value_counts()=", a_df.relation_name.value_counts()
+    pickle.dump({'df' : a_df, 
+                 'meta' : meta}, 
+                 open(assign_outfile, 'w'))
+
     
 # # ## TODO GET OLD PLOTTING FROM PROCESS.PY
 # # @transform(get_results, suffix(".samples"), 
@@ -2290,7 +2396,9 @@ if __name__ == "__main__":
                   get_samples,
                   samples_organize,
                   cvdata_organize,
-                  cv_collate_predlinks_assign
+                  cv_collate_predlinks_assign, 
+                  cv_collate_aggstats,
+
                   #cv_data_organize,
                   #plot_hypers,
                   #plot_circos_latent, 

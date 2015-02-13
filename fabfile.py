@@ -111,14 +111,14 @@ def get_data():
 
     DATASETS = [('experiments/mouseretina/sparkdatacv',
                  'experiments/mouseretina/',
-                 ['predlinks.pickle', 'assign.pickle']),
+                 ['predlinks.pickle', 'assign.pickle', 'aggstats.pickle']),
                 
                  ('experiments/synthdifferent/sparkdata',
                   'experiments/synthdifferent/',
                   ['aggstats.pickle']),
                  ('experiments/celegans/sparkdatacv',
                   'experiments/celegans/',
-                  ['predlinks.pickle', 'assign.pickle'])]
+                  ['predlinks.pickle', 'assign.pickle', 'aggstats.pickle'])]
     
    
     for remote_dir, local_dir, globs in DATASETS:

@@ -242,9 +242,149 @@ def plot_ari(infile, outfile):
     ax.set_xlim(0, 1)
     f.savefig(outfile)
 
+@transform(td("retina.*.samples.organized/assign.pickle"),
+           suffix("assign.pickle"), "z.pdf")
+
+def plot_z_matrix(exp_results, 
+                  out_filename):
+    assigndf = pickle.load(open(infile, 'r'))['df']
+
+
+    sample_d = pickle.load(open(exp_results))
+    chains = sample_d['chains']
+    exp = sample_d['exp']
+    print "exp=", exp
+    data_filename = exp['data_filename']
+    data = pickle.load(open(data_filename))
+    data_basename, _ = os.path.splitext(data_filename)
+    meta = pickle.load(open(data_basename + ".meta"))
+
+    meta_infile = meta['infile']
+
+    d = pickle.load(open(meta_infile, 'r'))
+    conn = d['conn_mat']
+    cells = d['cells']
+
+    cell_types = cells['type_id']
+
+    chains = [c for c in chains if type(c['scores']) != int]
+    CHAINN = len(chains)
+
+    # compute the z matrix 
+    z_mat = np.zeros((len(cells), len(cells)))
+    for ci, c in enumerate(chains):
+        sample_latent = c['state']
+        cell_assignment = np.array(sample_latent['domains']['d1']['assignment'])
+        ca = irm.util.canonicalize_assignment(cell_assignment)
+        for u in np.unique(ca):
+            ent_i = np.argwhere(ca == u).flatten()
+            for ci in ent_i:
+                for cj in ent_i:
+                    z_mat[ci, cj] += 1
+
+    import scipy.cluster
+    l = scipy.cluster.hierarchy.linkage(z_mat, method='ward')
+    
+    
+    ca = np.array(scipy.cluster.hierarchy.leaves_list(l))
+    z_mat = z_mat[ca]
+    z_mat = z_mat[:, ca]
+
+
+    import matplotlib.gridspec as grd
+    f = pylab.figure(figsize=(8, 6))
+    gs = grd.GridSpec(1, 2, width_ratios=[2,10 ], wspace=0.02)
+    ax = f.add_subplot(gs[:, 1])
+    im = ax.imshow(z_mat/CHAINN, cmap=pylab.cm.Greys, interpolation='nearest')
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_title("Cell coassignment probability") 
+    ax.set_xlabel("cells")
+
+
+    cbar_ax = f.add_axes([0.30, 0.15, 0.1, 0.02])
+    f.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=[0.0, 1.0])
+
+
+    typeax = f.add_subplot(gs[:, 0])
+    cells['coarse'][cells['type_id'] == 58] = 'bc'
+    cmap = {None : 4, 
+            'other': 4, 
+            'nac' : 2, 
+            'bc' : 1, 
+            'mwac' : 3, 
+            'gc' : 0}
+    color_idx = [cmap[o] for o in cells['coarse']]        
+    import brewer2mpl
+    cmap = brewer2mpl.get_map('Set1', 'qualitative', 5).mpl_colormap
+    typeax.scatter(cell_types, np.argsort(ca), edgecolor='none', 
+               s=3, 
+               c=color_idx, 
+               alpha=0.8,
+               cmap = cmap)
+    p = np.array([0, 12, 24, 57, 72, 80])
+    typeax.set_xticks(p)
+    typeax.set_xticks(p[1:] - np.diff(p)/2. , minor=True)
+    typeax.set_yticks([])
+    typeax.set_xticklabels(['gc', 'bc', 'nac', 'mwac', 'other'], minor=True,
+                           fontsize=8, rotation=90)
+    typeax.set_xticklabels([])
+
+    typeax.set_title("anatomist type (0-72)", fontsize=8)
+    typeax.set_ylabel("cells")
+    typeax.grid()
+
+    # create colors
+    
+    typeax.set_xlim(0, 80)
+    typeax.set_ylim(950, 0)
+
+
+    # con = sqlite3.connect(RETINA_DB)
+    # MAX_CONTACT_AREA=5.0
+    # area_thold_min = 0.1
+    
+    # contacts_df = pandas.io.sql.read_frame("select * from contacts where area < %f and area > %f" % (MAX_CONTACT_AREA, area_thold_min), 
+    #                                        con, index_col='id')
+
+    # contacts_df.head()
+
+
+    # for i in range(4):
+    #     # pick points 
+    #     which_row = np.argsort(ca).flatten()
+    #     spos = [270, 580, 790, 930][i]
+        
+    #     #spos = np.argsort(ca).flatten()[spos]
+    #     cell_row = np.argwhere(which_row == spos)[0]
+    #     # np.argsort(ca).flatten()[spos]
+
+    #     cell_row = cells.irow(cell_row)
+    #     print cell_row
+    #     cell_id = cell_row.index.values[0]
+    #     print "cell_id=", cell_id
+    #     typeax.scatter([cell_row['type_id']], 
+    #                    [spos], c='k', s=20, edgecolor='k', 
+    #                    facecolor='none')
+
+    #     ax = f.add_subplot(gs[i, 0])
+    #     c = contacts_df[contacts_df['from_id'] ==cell_id]
+    #     ax.scatter(c['y'], c['x'], edgecolor='none', s=1, alpha=0.5, c='k')
+
+    #     ax.scatter(cell_row['y'], cell_row['x'], s=40, c='r', edgecolor='none')
+
+
+    #     ax.set_xlim(0, 120)
+    #     ax.set_ylim(130, 50)
+    #     ax.set_xticks([])
+    #     ax.set_yticks([])
+    # print cells.head()
+    f.savefig(out_filename)
+
 if __name__ == "__main__":    
     pipeline_run([
         plot_predlinks_roc, 
-        plot_ari
+        plot_ari, 
+        plot_z_matrix
               ]) # , multiprocess=3)
     

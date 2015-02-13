@@ -42,6 +42,12 @@ update_mouseretina:
 dropbox:
 	cp -r * ~/Dropbox/jonaskording-connectomics 
 
+update_celegans:
+	cp ../experiments/celegans/*.pdf celegans/
+
+update_synthdifferent:
+	cp ../experiments/synthdifferent/*.pdf synthdifferent/
+
 debug: paper.pdf
 	biber paper | grep "didn't" 
 	grep "LaTeX Warning" paper.log

@@ -29,3 +29,13 @@ SPARK_DRIVER_MEMORY=32G ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPA
 
 
 SPARK_DRIVER_MEMORY=32g /spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=8  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+
+
+fab s.launch:20,1.68
+
+fab -R master s.push_aws_creds s.connect_master_data add_packages
+
+fab -P -R slaves s.push_aws_creds s.worker_disks add_packages
+
+
+

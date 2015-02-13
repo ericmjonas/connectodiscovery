@@ -137,23 +137,25 @@ connectomics data available today and in the future.
 \begin{figure}
   \centering 
   \centerline{\includegraphics[width=183mm]{fig1b.ai}}
-  \caption{Deriving circuitry and types from connectomics data a. As input we take the connectivity between cells (b), the distance between them (c), the depth of the cell bodies (d), and the depth profile of the synapses (e). f. Our algorithm discovers hidden cell types in this
-    connectivity data by assuming all cells of a type share a
-    distance-dependent connectivity profile, similar depth, and a
-    similar synaptic density profile, with cells of other types.  This
-    results in a clustering of the cells by those hidden
+  \caption{Deriving circuitry and types from connectomics data a. As
+    input we take the connectivity between cells (b), the distance
+    between them (c), the depth of the cell bodies (d), and the depth
+    profile of the synapses (e). f. Our algorithm discovers hidden
+    cell types in this connectivity data by assuming all cells of a
+    type share a distance-dependent connectivity profile, similar
+    depth, and a similar synaptic density profile, with cells of other
+    types.  This results in a clustering of the cells by those hidden
     types. f.) shows the cell connectivity matrix with cells of the
     same type grouped together. g.) shows the learned probability of
     connection between our different types at various distances -- in
     this case, the cells are likely to connect when they are
-    close. h. shows the probability of connection between two cell types
-that very rarely connect -- there's a background ``base'' connection rate
-to account for errors in data, but the probability is very low. 
-We can plot this these types (i) to show the relationship and spatial
-connections, and how probable various types are to connect to one
-another. j.) The connectivity between our discovered types changes as a
-function of distance. }
-
+    close. h. shows the probability of connection between two cell
+    types that very rarely connect -- there's a background ``base''
+    connection rate to account for errors in data, but the probability
+    is very low.  We can plot this these types (i) to show the
+    relationship and spatial connections, and how probable various
+    types are to connect to one another. j.) The connectivity between
+    our discovered types changes as a function of distance. }
 \label{fig:overview}
 \end{figure}
 
@@ -266,7 +268,8 @@ the area under the curve (AUC) for the resulting ROC curve. An AUC of 1.0 means 
 \section*{Results}
 We will first establish that our algorithm works properly and try to understand its properties using simulated data. Subsequently we will analyze in detail a dataset on the retina. Lastly we will briefly discuss the analysis of data from the worm \textit{c.elegans} and from an ancient microprocessor.  
 
-\subsection{Ground Truth Validation}
+
+\subsection{Validation with simulated data where ground truth is known}
 To validate our model, we performed a series of simulations to test if
 the model can accurately recover the true underlying network structure
 and cell type identity.  We thus simulate data for which we know the
@@ -275,10 +278,10 @@ algorithm (see methods) with the one we used for simulation. We find
 that the model does a good job of recovering the correct number of
 cell types, (fig~\ref{fig:synthetic}a), the the cell identities
 (fig~\ref{fig:synthetic}b), and the spatial extent of each type
-(fig~\ref{fig:synthetic}c).  For comparison, the infinite
-stochastic block model (fig~\ref{fig:synthetic}a, b, c, black line) assumes that only cell type matters, and thus finds
+(fig~\ref{fig:synthetic}c).  For comparison, we show the results from instead using the infinite
+stochastic block model (fig~\ref{fig:synthetic}a, b, c, black line) which assumes that only cell type matters, and thus finds
 small neighborhoods of connected nodes (instead of global connectivity
-patterns). Our model converges relatively quickly (see supplemental) to an estimate of
+patterns). This contrast shows that while the regular block model can not correctly deal with distance dependent connectivity, our model can. Our model converges relatively quickly (see supplemental) to an estimate of
 the most probable values for the cell types, which is enabled by using
 a combination of simulated annealing and parallelized Markov chain
 Monte Carlo (see methods for details). Thus our model at least is promising to be applied to biological datasets.
@@ -286,45 +289,64 @@ Monte Carlo (see methods for details). Thus our model at least is promising to b
 
 
 \subsection{Model Mismatch}
-To understand how our model would perform on real datasets that do not perfectly adhere to its generative model we next want to analyze its performance in such cases. To show where our model
-performs poorly, we attempt connectivity inference on five sets of
-synthetic data. Our type-and-distance assumptions for our connectivity model are
-simplifying, and reflect a general consensus about the organization of
-some (but not all) types of neural tissue. We assume that type is discrete (as opposed to the lpcm). We assume that each neuron only has one type (as opposed to the mixed membership model). We assume that connectivity is a function of distance and type (as opposed to the classic stochastic block model). Our goal is to show that our model does not find
-``structure'' when there is none. 
 
 
+\fxwarning{Add xlabel, ylabel, make line width of axes a bit bigger, larger number font, 
+all label fonts should be the same size }
 
-We generate ten synthetic datasets based on assumptions of other models and analyze our model’s performance on these datasets. More specifically we perform 10-way cross validation to predict link accuracy as well as ARI to the known (``true'') type, type spatial extent, and type number. We find that x. We find that y. We find that z. Our results thus strongly suggest even when the data is not generated according to our own generative model that our results are meaningful.
+To understand how our model would perform on real datasets that do not
+perfectly adhere to its generative model we next want to analyze its
+performance in such cases. To understand the properties of our model, we
+attempt connectivity inference on four sets of synthetic data. This helps us understand what our model would do if the data does not obey our assumptions.
 
-\fxwarning{Add results} 
-\fxwarning{add spatial extent of types}
+We thus generate ten sets of synthetic data from each of four existing models. 
+The distance-dependent stochastic block model assumes type depends on distance, 
+the traditional stochastic block model has no notion of distance, the mixed membership block model assumes type is combinatorial, and the latent position cluster model assumes that type is clustered-but-continuous. 
 
+If the data is sampled from our model, inference according to our model, unsurprisingly, is good by all measures. It correctly estimates the number of cell types; it is good at predicting connectivity (high AUC); it agrees with human classification (Rand index); it discovers all types, and leads to homogenous estimates (Fig. \ref{fig:othermodel} first row). If the data comes from a block model without distance dependence, we see that it still does pretty well on all meaningful measures (Fig. \ref{fig:othermodel} second row). It basically estimates correctly that there is no distance dependence. For the mixed membership model (Fig. \ref{fig:othermodel} third row), the model grossly overestimates the number of types, by basically allocating a type for each combination of memberships. Otherwise it still performs relatively well. Lastly, for the latent position clustering model (Fig. \ref{fig:othermodel} fourth row), the model does poorly. If type is continuous instead of discrete then our model is basically trying to cover a continuous set with a discrete scenario leading to rather poor performance. However, as we do expect cell types to be real in biology we might expect our model to do well with real data. 
 
+\begin{figure}
+  \centering 
 
+  \includegraphics[width=6.0in]{synthdifferent.ai}
+  \caption{Model inferences when true generating model differs from our distance-block-model prior. Horizontal columns show results with synthetic data generated according to the latent position cluster model, the mixed membership block model, the non-distance dependent stochastic block model, and the distance dependent stochastic block model. In all cases histograms represent posterior distribution over indicated metric. a.) The number of types found by the model, vertical dash line indicates ``true'' type number (not applicable to mixed membership model). b.) The area under the ROC curve, indicating link prediction accuracy. c, d, e.) Clustering metrics
+quantifying degree of type agreement with known ground truth. }
 
-\fxwarn{add to figure comments}
-\begin{itemize}
-\item Data with type-specific connectivity and distance dependence
-\item Data with type-specific connectivity and no distance dependence
-\item Data generated according to a latent-position clustering model,
-  where each cell belongs to a type which is part of a cluster in a
-  low-dimensional space \fxwarning{Cite this paper}
-\item cell type is combinatorial -- there are three possible
-  properties a cell can have, and each subset of properties influences
-  connectivity to neighboring cells. 
-\item cell type is a continuum -- each cell's type continuously varies
-  from zero to one, and the probability of a connection between cells
-  depends on this type.
-\end{itemize}
+  \label{fig:othermodel}
+\end{figure}
+
 
 
 \subsection{Sensitivity to Edge Effects} 
 
-Connectomic efforts so far have reconstructed only small sections of tissue at a time. Consequently, many connections to cells outside that tissue volume
-will be lost. We are concerned that this selective elimination of connectivity along the boundary might give the appearance of distance-dependent connectivity when there is none. We thus performed simulations to check if edge effects
-could destroy spatial structure and if edge effects could introduce
-artificial, spurious spatial structure. We measure the degree to which the model infers distance dependent connectivity for two synthetic datasets -- one with distance-dependence and one without. We find that, if there is no distance-dependence, edge effects do not artificially introduce distance dependence. However, if the section we are examining is too small, our model can miss the distance dependence. Thus with respect to distance-dependent connectivity inference, our model errs on the side of caution. But we also find that for spatial extend that is similar to the currently available datasets the effects of this are quite limited.
+\begin{figure}
+  \centering 
+  % generated from experiments/edgeeffects/edgeeffects.ipynb
+  \centerline{\includegraphics[width=3.5in]{edgeeffects.pdf}}
+  \caption{edge effects}
+\label{fig:synthetic}
+\end{figure}
+
+\fxwarning{cut down on the number of ticks, this will be a small figure, homogenize fonts} 
+
+
+Connectomic efforts so far have reconstructed only small sections of
+tissue at a time. Consequently, many connections to cells outside that
+tissue volume will be lost. We are concerned that this selective
+elimination of connectivity along the boundary might give the
+appearance of distance-dependent connectivity when there is none. We
+thus performed simulations to check if edge effects could destroy
+spatial structure and if edge effects could introduce artificial,
+spurious spatial structure. We measure the degree to which the model
+infers distance dependent connectivity for two synthetic datasets --
+one with distance-dependence and one without. We find that, if there
+is no distance-dependence, edge effects do not artificially introduce
+distance dependence. However, if the section we are examining is too
+small, our model can miss the distance dependence. Thus with respect
+to distance-dependent connectivity inference, our model errs on the
+side of caution. But we also find that for spatial extend that is
+similar to the currently available datasets the effects of this are
+quite limited.
 
 \fxwarning{Add in a line on this figure to show where the existing data is by looking at old-school tracer reconstruction in the retina. CITE } 
 
@@ -468,7 +490,7 @@ prior belief of laminarity.
 
 \subsection*{Recovering spatial connectivity in multiple graphs simultaneously}
 
-Having shown our model to work on the repeating tessellated, laminar structure of the mammilian retina, we then apply our model to a structurally very different connectome -- the whole body of a small roundworm: 
+Having shown our model to work on the repeating tessellated, laminar structure of the mammalian retina, we then apply our model to a structurally very different connectome -- the whole body of a small roundworm: 
 \textit{Caenorhabditis elegans} is a model system in
 developmental neuroscience\autocite{White1986}, with the location and
 connectivity of each of 302 neurons developmentally determined,
@@ -477,44 +499,41 @@ only the motor neurons in C. elegans exhibit regular distribution in
 space -- along the body axis. Most interneurons are
 concentrated in various ganglia that project throughout the entire
 animal, and the sensory neurons are primarily located in a small
-number of anterior ganglia. C. elegans also differs from the retina in that the measured connectome is actually two separate graphs -- one of directed chemical synapses and another of undirected electrical synapses. 
+number of anterior ganglia. \textit{C. elegans} also differs from the retina in that the measured connectome is actually two separate graphs -- one of directed chemical synapses and another of undirected electrical synapses. As this is a very different connectome, it allows an interesting generalization test: how well will our model work on such a distinct data set.
+
+\fxwarning{Fix linewidth too small, align d.e.f. callouts, change multiple fonts. Boxes same size. Need y labels (number of samples in bin) } 
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics[width=4.5in]{celegans.ai}}
-  \caption{Discovering connectivity and type in \textit{C. elegans}. 
- a.) Initial
-    \textit{C. elegans} cell connectivity matrix, red are
-    (directional) chemical synapses, blue are electrical
-    synapses. Point size is proportional to synapse count between
-    those cells. b.) Clustered adjacency matrix showing identified
-    clusters. c.) Inter-cluster connectivity, showing the position of
-    each cell along the body axis as well as the ``true'' cell type --
-    both coarse (motor, sensory, and interneuron) as well as fine
-    (small text labels). }
+  \centerline{\includegraphics[width=4.7in]{celegans2.ai}}
+  \caption{Discovering connectivity and type in
+    \textit{C. elegans}. Discovered types a.) The cell/cell
+    coassignment matrix identifies the posterior probability of any
+    two cells in \textit{c. elegans} being of the same type. The large
+    visible clusters roughly correspond to a more-coarse version of
+    types identified by neuroanatomists seen in b.) In particular,
+    robust subpopulations are found corresponding to divisions of
+    moter, interneuron, and sensory neurons. c.) The location of the
+    cell soma, revealing how spatial localizatinion correlates with
+    type. d.) The ROC curves for held-out link probability for both
+    the electrical synapses (gap junctions) and chemical synapses in
+    c. elegans. e.) The posterior distribution of the area under the
+    ROC curve for the curves in d. f.) Measurements of the
+    agreement of our identified cell types compared to neuroanatomists. 
+    See methods for an explanation of metrics. }
   \label{fig:celegans}
 \end{figure}
 
 
 
 Using both the chemical and electrical connectivity (see methods), we
-determined the underlying clusters explained by connectivity and
+determined the underlying cell types explained by connectivity and
 distance (fig~\ref{fig:celegans}a). A superficial inspection of the results shows
 clustering into groups consisting roughly homogeneously of motor
 neurons, sensory neurons, and interneurons. Closer examination reveals
 agreement with the classifications originally outlined by White in
 1986.  
 
-We identify cell types that reflect the known motor/non-motor neuron
-classes, even though this system lacks the strong repeat
-microcircuitry our model was designed for.  Motor-neuron types AS, DA,
-and VA, all exclusively postsynaptic, are identified as a common type,
-as are motor-neuron types VD and DD. Traditional types VC, DB, and VB
-also mostly share a cluster. Various head motor neurons, including
-types SMD and RMD, are clustered together. Interneurons with known
-anatomically-distinct connectivity patterns, such as AVA (2 cells),
-are clustered into pure types.The algorithm even correctly places the
-single-cell types DVB and DVC by themselves.
 
 Note our clustering does not perfectly reflect known divisions --
 several combinations of head and sensory neurons are combined, and a
@@ -524,13 +543,15 @@ reflect a ``coarsening'' of known types, based entirely on
 connectivity and distance information, even when the organism exhibits
 substantially less spatial regularity than the retina.
 
+\fxwarning{Add chip back in}
+
 
 \section*{Discussion}
 We have presented a machine learning technique that allows cell types
 and microcircuitry to be discovered from connectomics data.  We have
 shown its applicability to regularly structured laminar neural
 circuits like the retina, as well as a less structured whole neuronal
-organism (\textit{C. elegans}) and an artificial processor. When
+organism (\textit{C. elegans}) and a classical processor. When
 compared to existing methods, we show how the incorporation of all of
 this data yields results that combine both high link-prediction
 accuracy and high agreement with human anatomists. We have found that
@@ -554,7 +575,7 @@ data increases. Our algorithm required several hours for 1000
 neurons. Scaling this class of probabilistic model is an active area
 of research, and recent results in both variational methods
 \autocite{Hoffman2013} and spectral learning \autocite{Anandkumar2012}
-and future work could adapte them to find faster approximate solutions
+and future work could adapt them to find faster approximate solutions
 to our problem.
 
 Larger datasets will allow algorithms to distinguish more distinct
@@ -996,9 +1017,6 @@ have an ARI of 1.0 while progressively more dissimilar clusters have
 lower ARIs, becoming negative as the clustering gets anti-correlated.
 
 \end{document}
-
-
-
 
 
 
