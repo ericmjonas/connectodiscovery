@@ -39,12 +39,13 @@ SIDE_N = 6
 
 
 class_conn = {(0, 1) : (0.7, 0.8), 
-              (1, 2) : (2.0, 0.6), 
+              (1, 2) : (2.2, 0.6), 
               #(3, 2) : (0.7, 0.9), 
-              (2, 1) : (0.7, 0.8), 
-              (0, 3) : (1.7, 0.7), 
+              (2, 1) : (0.2, 0.8), 
+              (0, 3) : (1.4, 0.7), 
               (3, 4) : (2.4, 0.8), 
-              (4, 0) : (1.0, 0.3)}
+              (4, 0) : (1.0, 0.3), 
+              }
 
 
 nodes_with_class, connectivity = irm.data.generate.c_class_neighbors(SIDE_N, 
@@ -167,7 +168,7 @@ f.savefig("source.f1.somadepth.raw.pdf")
 CLASS_N = len(np.unique(c_class))
 
 from brewer2mpl import qualitative
-bmap = qualitative.Dark1[CLASS_N]
+bmap = qualitative.Set1[CLASS_N]
 print bmap
 group_colors = bmap.mpl_colors # (np.linspace(0, 1, CLASS_N))
 
@@ -229,7 +230,7 @@ for c1 in range(CLASS_N):
         c = (c1, c2)
         if c in class_conn:
             mu = class_conn[c][0]
-            lamb = class_conn[c][0]/4
+            lamb = class_conn[c][0]/12
         else:
             mu = 0.0001
             lamb = 0.0001
@@ -244,7 +245,7 @@ f3.savefig("source.f1.latent.pdf")
 
 
 
-dists = np.array([0.1, 1.0, 2.0])
+dists = np.array([0.5, 1.0, 2.0])
 
 mats = np.zeros((len(dists), CLASS_N, CLASS_N))
 
@@ -275,10 +276,10 @@ def color_func(x):
     return np.array([0.0, 0.0, 0.0, x**3])
 
 def width_func(x):
-    return 3.0
+    return 7.0
 linkplots.plot_helper(ax, mats, group_colors, color_func, link_width_func = width_func, 
-                      X_SCALE=3.0, plot_colorbar=False, x_pad =2 )
-ax.set_xticklabels([""] + ["%2.1f um"% x for x in  dists], fontsize=20)
+                      X_SCALE=3.0, plot_colorbar=False, x_pad =2, directed=True)
+ax.set_xticklabels([""] + ["%2.1f um"% (x*40) for x in  dists], fontsize=20)
 
 
 ax.text(6.0*len(mats)+1, 2, "conn\nprob", fontsize= 14 )
