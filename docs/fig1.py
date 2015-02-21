@@ -1,6 +1,12 @@
 import numpy as np
 from matplotlib import pylab
 import irm
+from matplotlib.collections import PatchCollection, LineCollection
+from matplotlib.patches import Circle    
+import sys
+sys.path.append("../code")
+import linkplots
+import util
 
 def dist(a, b):
     return np.sqrt(np.sum((b-a)**2))
@@ -160,6 +166,11 @@ f.savefig("source.f1.somadepth.raw.pdf")
 
 CLASS_N = len(np.unique(c_class))
 
+from brewer2mpl import qualitative
+bmap = qualitative.Dark1[CLASS_N]
+print bmap
+group_colors = bmap.mpl_colors # (np.linspace(0, 1, CLASS_N))
+
 ai = np.argsort(c_class).flatten()
 c_sorted = connectivity[ai, :]
 c_sorted = c_sorted[:, ai]
@@ -176,6 +187,36 @@ for d in di:
 ax.set_xticks([])
 ax.set_yticks([])
 f2.savefig("source.f1.sorted.pdf")
+
+f2 = pylab.figure()
+
+ax = f2.add_subplot(1, 1, 1)
+mat = c_sorted
+ax.imshow(mat, cmap=pylab.cm.Blues, interpolation='nearest')
+borders =  di # np.argwhere(np.diff(ca[cell_order])).flatten()
+
+ax.set_xticks([])
+ax.set_yticks([])
+
+#group_colors = np.random.permutation(group_colors)
+prev = 0
+
+BORDER_WIDTH = 2
+N = mat.shape[0]
+for b, fc in zip(borders.tolist()  + [mat.shape[0]], group_colors):
+    
+    ax.plot([prev, b], [-BORDER_WIDTH, -BORDER_WIDTH], c=fc, linewidth=10, solid_capstyle="butt")
+    
+    ax.plot([-BORDER_WIDTH, -BORDER_WIDTH], [prev, b], c=fc, linewidth=10, solid_capstyle="butt")
+    ax.plot([prev, b], [N+BORDER_WIDTH, N+BORDER_WIDTH], c=fc, linewidth=10, solid_capstyle="butt")
+    ax.plot([N+BORDER_WIDTH, N+BORDER_WIDTH], [prev, b], c=fc, linewidth=10, solid_capstyle="butt")    
+    prev = b
+    
+for p in borders:
+    ax.axhline(p + 0.5, c='k', linewidth=1)
+    ax.axvline(p + 0.5, c='k', linewidth=1)
+#ax.set_ylim(BORDER_WIDTH + N, )
+f2.savefig("source.f1.sortedcolors.pdf")
 
 # hilariously construct suffstats and hps by hand
 hps = {'mu_hp' : 1.0, 
@@ -202,99 +243,188 @@ irm.plot.plot_t1t1_params(f3, conn_and_dist, nodes_with_class['class'],
 f3.savefig("source.f1.latent.pdf")
 
 
-DIST = 0.5
 
-circos_p = irm.plots.circos.CircosPlot(c_class, "0.5r", "70p", 
-                                           ['red', 'green', 'blue', 'yellow', 'purple'])
+dists = np.array([0.1, 1.0, 2.0])
 
-v = irm.irmio.latent_distance_eval(DIST, 
-                                   ss, hps, 'LogisticDistance')
-
-thold = 0.3
-ribbons = []
-links = []
-pairs_plotted = set()
-
-ribbons = []
-for (src, dest) in v.keys():
-    p1 = v[(src, dest)]
-    p2 = v[(dest, src)]
-    p = max(p1, p2)
-    if (src, dest) in pairs_plotted or (dest, src) in pairs_plotted:
-        pass
-    else:
-        if p > thold :
-            pix = int(10*p)
-            print src, dest, p, pix
-
-            ribbons.append((src, dest, pix))
-
-    pairs_plotted.add((src, dest))
-
-circos_p.add_class_ribbons(ribbons)
-circos_p.add_plot('scatter', {'r0' : '1.0r', 
-                              'r1' : '1.15r', 
-                              'min' : 0, 
-                              'max' : 1.1, 
-                              'glyph' : 'circle', 
-                              'glyph_size' : 12, 
-                              'color' : 'black',
-                              'stroke_thickness' : 0
-                          }, 
-                  soma_depth, 
-                  {'backgrounds' : [('background', {'color': 'vvlgrey', 
-                                                    'y0' : 0.0, 
-                                                    'y1' : 1.0})],  
-                   'axes': [('axis', {'color' : 'vlgrey', 
-                                      'thickness' : 1, 
-                                      'spacing' : '%fr' % 0.1})]})
+mats = np.zeros((len(dists), CLASS_N, CLASS_N))
 
 
-for bi, b in enumerate(syn_pro_bins[:-1]):
-    width = 0.15/20.
-    start = 1.15 + width*bi
-    end = start + width
-    circos_p.add_plot('heatmap', {'r0' : '%fr' % start, 
-                                  'r1' : '%fr' % end, 
-                                  'stroke_thickness' : 0, 
-                                  'color' : 'greys-6-seq'}, 
-                      syn_pro_hist[:, bi])
+for di, d in enumerate(dists):
+    e = irm.irmio.latent_distance_eval(d, ss, hps, 'LogisticDistance')
 
-irm.plots.circos.write(circos_p, "source.f1.circos.png")
+    # convert to canonical 
+    for (g1, g2), p in e.iteritems():
+        c1 = g1
+        c2 = g2 
+        mats[di, c1, c2] = p
 
 
-DISTS = [0.1, 1.0, 2.5]
-for dist_i, dist_threshold in enumerate(DISTS):
-    circos_p = irm.plots.circos.CircosPlot(c_class, "0.5r", "70p", 
-                                           ['red', 'green', 'blue', 'yellow', 'purple'])
 
-    v = irm.irmio.latent_distance_eval(dist_threshold, 
-                                       ss, hps, 'LogisticDistance')
+#group_colors_opaque = group_colors.copy()
+#group_colors_opaque[:, -1] = 1.0
+#group_colors = ['r', 'g', 'b', 'y', 'k']
 
-    thold = 0.3
-    ribbons = []
-    links = []
-    pairs_plotted = set()
 
-    ribbons = []
-    for (src, dest) in v.keys():
-        p1 = v[(src, dest)]
-        p2 = v[(dest, src)]
-        p = max(p1, p2)
-        if (src, dest) in pairs_plotted or (dest, src) in pairs_plotted:
-            pass
-        else:
-            if p > thold :
-                pix = int(10*p)
-                print src, dest, p, pix
+fig = pylab.figure(figsize=(10, 6))
+ax = fig.add_subplot(1, 1, 1, aspect='equal') 
 
-                ribbons.append((src, dest, pix))
 
-        pairs_plotted.add((src, dest))
+def color_func(x):
+    if x < 0.0:
+        return np.array([0.0, 0.0, 0.0, 0.0])
+    return np.array([0.0, 0.0, 0.0, x**3])
 
-    circos_p.add_class_ribbons(ribbons)
+def width_func(x):
+    return 3.0
+linkplots.plot_helper(ax, mats, group_colors, color_func, link_width_func = width_func, 
+                      X_SCALE=3.0, plot_colorbar=False, x_pad =2 )
+ax.set_xticklabels([""] + ["%2.1f um"% x for x in  dists], fontsize=20)
 
-    irm.plots.circos.write(circos_p, "source.f1.circos.%d.svg" % dist_i)
+
+ax.text(6.0*len(mats)+1, 2, "conn\nprob", fontsize= 14 )
+ax.text(6.0*len(mats)+2.2, 2, "0.0", fontsize= 14 )
+
+ax.text(6.0*len(mats)+2.2, 4, "1.0", fontsize= 14 )
+
+
+fig.savefig("source.f1.connections.pdf")
+
+
+# X_SCALE = 4.0
+# CIRCLE_SIZE = 0.4
+# for i in range(len(mats)):
+#     points = []
+#     colors = []
+#     widths = []
+    
+#     patches = []
+#     m = mats[i]
+#     for ci in range(m.shape[0]):
+#         for cj in range(m.shape[1]):
+#             if ci <= cj   and ci != cj:
+#                 p = m[ci, cj]
+#                 if p >= 0.1:
+#                     points.append([[i*X_SCALE, ci], [(i+1)*X_SCALE, cj]])
+#                     colors.append([0, 0, 0, p**3])
+#                     #print p
+#                     widths.append(4.0)
+#         circle = Circle((i*X_SCALE,ci), CIRCLE_SIZE)
+#         patches.append(circle)
+
+#     lc = LineCollection(points, colors = colors, linewidths=np.array(widths), zorder=1)
+#     ax.add_collection(lc)
+
+#     p = PatchCollection(patches, color = group_colors, edgecolor='k', zorder=10) # , color='w', edgecolor='k')
+
+#     ax.add_collection(p)
+# # last ones
+# patches = [Circle((mats.shape[0]*X_SCALE,ci), CIRCLE_SIZE) for ci in range(mats.shape[1])]
+# p = PatchCollection(patches, color = group_colors)
+# ax.add_collection(p)
+
+# ax.set_yticks([])
+# ax.set_xticks(np.arange(mats.shape[0] + 1) * X_SCALE)
+# ax.set_xticklabels([""] + ["%2.1f um"% x for x in  dists], fontsize=20)
+# ax.set_xlim(-1, len(mats)*X_SCALE + 1)
+# ax.set_ylim(mats[0].shape[0], -1)
+# ax.set_xlabel("cell distance", fontsize=20)
+# ax.set_ylabel("discovered cell type", fontsize=20)
+
+# fig.savefig("source.f1.connections.pdf")
+
+# DIST = 0.5
+
+# circos_p = irm.plots.circos.CircosPlot(c_class, "0.5r", "70p", 
+#                                            ['red', 'green', 'blue', 'yellow', 'purple'])
+
+# v = irm.irmio.latent_distance_eval(DIST, 
+#                                    ss, hps, 'LogisticDistance')
+
+# thold = 0.3
+# ribbons = []
+# links = []
+# pairs_plotted = set()
+
+# ribbons = []
+# for (src, dest) in v.keys():
+#     p1 = v[(src, dest)]
+#     p2 = v[(dest, src)]
+#     p = max(p1, p2)
+#     if (src, dest) in pairs_plotted or (dest, src) in pairs_plotted:
+#         pass
+#     else:
+#         if p > thold :
+#             pix = int(10*p)
+#             print src, dest, p, pix
+
+#             ribbons.append((src, dest, pix))
+
+#     pairs_plotted.add((src, dest))
+
+# circos_p.add_class_ribbons(ribbons)
+# circos_p.add_plot('scatter', {'r0' : '1.0r', 
+#                               'r1' : '1.15r', 
+#                               'min' : 0, 
+#                               'max' : 1.1, 
+#                               'glyph' : 'circle', 
+#                               'glyph_size' : 12, 
+#                               'color' : 'black',
+#                               'stroke_thickness' : 0
+#                           }, 
+#                   soma_depth, 
+#                   {'backgrounds' : [('background', {'color': 'vvlgrey', 
+#                                                     'y0' : 0.0, 
+#                                                     'y1' : 1.0})],  
+#                    'axes': [('axis', {'color' : 'vlgrey', 
+#                                       'thickness' : 1, 
+#                                       'spacing' : '%fr' % 0.1})]})
+
+
+# for bi, b in enumerate(syn_pro_bins[:-1]):
+#     width = 0.15/20.
+#     start = 1.15 + width*bi
+#     end = start + width
+#     circos_p.add_plot('heatmap', {'r0' : '%fr' % start, 
+#                                   'r1' : '%fr' % end, 
+#                                   'stroke_thickness' : 0, 
+#                                   'color' : 'greys-6-seq'}, 
+#                       syn_pro_hist[:, bi])
+
+# irm.plots.circos.write(circos_p, "source.f1.circos.png")
+
+
+# DISTS = [0.1, 1.0, 2.5]
+# for dist_i, dist_threshold in enumerate(DISTS):
+#     circos_p = irm.plots.circos.CircosPlot(c_class, "0.5r", "70p", 
+#                                            ['red', 'green', 'blue', 'yellow', 'purple'])
+
+#     v = irm.irmio.latent_distance_eval(dist_threshold, 
+#                                        ss, hps, 'LogisticDistance')
+
+#     thold = 0.3
+#     ribbons = []
+#     links = []
+#     pairs_plotted = set()
+
+#     ribbons = []
+#     for (src, dest) in v.keys():
+#         p1 = v[(src, dest)]
+#         p2 = v[(dest, src)]
+#         p = max(p1, p2)
+#         if (src, dest) in pairs_plotted or (dest, src) in pairs_plotted:
+#             pass
+#         else:
+#             if p > thold :
+#                 pix = int(10*p)
+#                 print src, dest, p, pix
+
+#                 ribbons.append((src, dest, pix))
+
+#         pairs_plotted.add((src, dest))
+
+#     circos_p.add_class_ribbons(ribbons)
+
+#     irm.plots.circos.write(circos_p, "source.f1.circos.%d.svg" % dist_i)
 
 
 

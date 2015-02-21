@@ -1,4 +1,21 @@
 """
+   79  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+   82  ls sparkdatacv/*.meta
+   84  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+   85  ls ./sparkdatacv/celegans.2r.ldp.*cv_nfold_10-fixed_20_200-anneal_slow_800.samples.organized/aggstats.pickle
+   86  ls ./sparkdatacv/celegans.2r.ldp.03*cv_nfold_10-fixed_20_200-anneal_slow_800.samples.organized/aggstats.pickle
+   87  rm ./sparkdatacv/celegans.2r.ldp.03*cv_nfold_10-fixed_20_200-anneal_slow_800.samples.organized/aggstats.pickle
+   88  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+   89  rm ./sparkdatacv/celegans.2r.ldp.*cv_nfold_10-fixed_20_200-anneal_slow_800.samples.organized/aggstats.pickle
+   90  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+   95  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+   97  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+   99  SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+
+
+SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
+
+SPARK_DRIVER_MEMORY=32g ~/spark/bin/spark-submit --conf spark.exutorEnv.PYTHONPATH=`pwd` --conf spark.executor.memory=6g --conf spark.task.cpus=4  --conf spark.kryoserializer.buffer.mb=512 --conf spark.akka.frameSize=1000 --py-files=/data/netmotifs.egg,../../code/cvpipelineutil.py sparkpipelinecv.py
 """
 import sys
 # total hack, I should really know better
@@ -69,7 +86,7 @@ def td(fname): # "to directory"
     return os.path.join(WORKING_DIR, fname)
 
 EXPERIMENTS = [
-    ('retina.0.ld.0.0.xyz', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
+    #('retina.0.ld.0.0.xyz', 'cv_nfold_2', 'debug_2_100', 'debug_2'), 
 
 
     # ('retina.xsoma' , 'fixed_20_100', 'anneal_slow_1000'), 
@@ -122,10 +139,23 @@ for ti in [1]:
                         #EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
                 
 # EXTRA ONE FROM MAKEFILE
+
 bs = 'retina.%d.srm_clist_xsoma.%d.%d.%s.%d.%d' % (1, 3, 1, 'xyz', 1,2)
 EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
 
+
+bs = 'retina.%d.ld.%d.%d.%s' % (1, 3, 1, 'xyz')
+EXPERIMENTS.append((bs, 'cv_nfold_2', 'debug_2_100', 'debug_2'))
+EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
+
+
             
+
+bs = 'retina.%d.bb' % (1)
+EXPERIMENTS.append((bs, 'cv_nfold_2', 'debug_2_100', 'debug_2'))
+EXPERIMENTS.append((bs, 'cv_nfold_10', 'fixed_20_100', 'anneal_slow_1000'))
+
+
 INIT_CONFIGS = {'fixed_20_100' : {'N' : 20, 
                                   'config' : {'type' : 'fixed', 
                                               'group_num' : 100}}, 
@@ -473,189 +503,6 @@ def experiment_generator(EXPERIMENTS, CV_CONFIGS, INIT_CONFIGS, get_dataset, td)
         
         yield data_filename, out_files, cv_config_name, init_config_name, kernel_config_name, init_config, cv_config
 
-# def init_generator():
-#     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-#         for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
-#             name, _ = os.path.splitext(data_filename)
-
-#             # now generate one of these for every single cv dataset:
-#             yield data_filename, ["%s-%s.%02d.init" % (name, init_config_name, i) for i in range(INIT_CONFIGS[init_config_name]['N'])], init_config_name, INIT_CONFIGS[init_config_name]
-
-# def cv_generator():
-#     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-#         for data_filename in get_dataset(data_name):
-#             name, _ = os.path.splitext(data_filename)
-#             for cv_i in range(CV_CONFIGS[cv_config_name]['N']):
-#                 cv_name_base = "%s-%s.%02d.cv" % (name, cv_config_name, cv_i)
-                
-#                 yield data_filename, [cv_name_base + ".data",
-#                                       cv_name_base + ".latent",
-#                                       cv_name_base + ".meta"], cv_i, cv_config_name, CV_CONFIGS[cv_config_name]
-
-
-
-# @follows(create_latents_srm)
-# @follows(create_latents_clist)
-# @follows(create_latents_xsoma)
-# @follows(create_latents_bb)
-# @follows(create_latents_srm_clist_xsoma)
-# @files(cv_generator)
-# def create_cv(data_filename, (out_data_filename,
-#                               out_latent_filename,
-#                               out_meta_filename), cv_i, cv_config_name, cv_config):
-#     """ 
-#     Creates a single cross-validated data set 
-#     """
-#     basename, _ = os.path.splitext(data_filename)
-#     latent_filename = basename + ".latent"
-#     meta_filename = basename + ".meta"
-
-
-#     data = pickle.load(open(data_filename))
-#     shape = data['relations']['R1']['data'].shape
-#     N =  shape[0] * shape[1]
-#     if cv_config['type'] == 'nfold':
-#         np.random.seed(0) # set the seed
-
-#         perm = np.random.permutation(N)
-#         subset_size = N / cv_config['N']
-#         subset = perm[cv_i * subset_size:(cv_i+1)*subset_size]
-        
-#         observed = np.ones(N, dtype=np.uint8)
-#         observed[subset] = 0
-#         data['relations']['R1']['observed'] = np.reshape(observed, shape)
-
-#     else:
-#         raise Exception("Unknown cv type")
-    
-#     pickle.dump(data, open(out_data_filename, 'w'))
-                    
-#     latent = pickle.load(open(latent_filename))
-#     pickle.dump(latent, open(out_latent_filename, 'w'))
-                    
-#     meta = pickle.load(open(meta_filename))
-#     meta['cv'] = {'cv_i' : cv_i,
-#                   'cv_config_name' : cv_config_name}
-    
-#     pickle.dump(meta, open(out_meta_filename, 'w'))
-
-            
-# @follows(create_latents_srm)
-# @follows(create_latents_clist)
-# @follows(create_latents_xsoma)
-# @follows(create_latents_bb)
-# @follows(create_latents_srm_clist_xsoma)
-# @follows(create_cv)
-# @files(init_generator)
-# def create_inits(data_filename, out_filenames, init_config_name, init_config):
-#     basename, _ = os.path.splitext(data_filename)
-#     latent_filename = basename + ".latent"
-    
-#     irm.experiments.create_init(latent_filename, data_filename, 
-#                                 out_filenames, 
-#                                 init= init_config['config'], 
-#                                 keep_ground_truth=False)
-
-
-
-# def experiment_generator():
-#     for data_name, cv_config_name, init_config_name, kernel_config_name in EXPERIMENTS:
-#         for data_filename in get_dataset("%s-*%s*" % (data_name, cv_config_name)):
-#             name, _ = os.path.splitext(data_filename)
-
-#             inits = ["%s-%s.%02d.init" % (name, init_config_name, i) for i in range(INIT_CONFIGS[init_config_name]['N'])]
-            
-#             exp_name = "%s-%s-%s.wait" % (data_filename, init_config_name, kernel_config_name)
-#             yield [data_filename, inits], exp_name, kernel_config_name
-
-# @follows(create_volume)
-# @follows(create_inits)
-# @files(experiment_generator)
-# def run_exp((data_filename, inits), wait_file, kernel_config_name):
-#     # put the filenames in the data
-#     print "Putting the file", data_filename, "in the bucket" 
-
-#     irm.experiments.to_bucket(data_filename, VOLUME_NAME)
-
-#     [irm.experiments.to_bucket(init_f, VOLUME_NAME) for init_f in inits]
-#     kernel_config_filename = kernel_config_name + ".pickle"
-
-#     kc = KERNEL_CONFIGS[kernel_config_name]
-#     ITERS = kc['ITERS']
-#     kernel_config = kc['kernels']
-#     fixed_k = kc.get('fixed_k', False)
-#     cores = kc.get('cores', DEFAULT_CORES)
-#     relation_class = kc.get('relation_class', DEFAULT_RELATION)
-
-#     pickle.dump(kernel_config, open(kernel_config_filename, 'w'))
-
-#     irm.experiments.to_bucket(kernel_config_filename, VOLUME_NAME)
-
-
-#     CHAINS_TO_RUN = len(inits)
-
-    
-#     jids = []
-
-#     for init_i, init in enumerate(inits):
-#         jid = multyvac.submit(irm.experiments.inference_run, 
-#                               init, 
-#                               data_filename, 
-#                               kernel_config_filename, 
-#                               ITERS, 
-#                               init_i, 
-#                               VOLUME_NAME, 
-#                               None, 
-#                               fixed_k, 
-#                               relation_class = relation_class, 
-#                               cores = cores, 
-#                               _name="%s-%s-%s" % (data_filename, init, 
-#                                                   kernel_config_name), 
-#                               _layer = MULTYVAC_LAYER,
-#                               _multicore = cores, 
-#                               _core = 'f2')
-#         jids.append(jid)
-
-
-#     pickle.dump({'jids' : jids, 
-#                 'data_filename' : data_filename, 
-#                 'inits' : inits, 
-#                 'kernel_config_name' : kernel_config_name}, 
-#                 open(wait_file, 'w'))
-
-
-# @transform(run_exp, suffix('.wait'), '.samples')
-# def get_results(exp_wait, exp_results):
-#     d = pickle.load(open(exp_wait, 'r'))
-    
-#     chains = []
-#     # reorg on a per-seed basis
-#     error_count = 0
-#     for jid in d['jids']:
-#         job = multyvac.get(jid)
-#         print "waiting on", jid
-#         job.wait()
-#         if job.status  != "done" :
-#             print "ERROR", jid, job.status, exp_wait
-#             fid = open("error.%s" % jid, 'w')
-#             fid.write("error! %s\n" % exp_wait)
-#             fid.close()
-#             error_count += 1
-#         else:
-#             print "downloading", jid, "results"
-#             chain_data = job.get_result()
-
-#             chains.append({'scores' : chain_data[0], 
-#                            'state' : chain_data[1], 
-#                            'times' : chain_data[2], 
-#                            'latents' : chain_data[3]})
-#     if error_count > 0.75 * len(d['jids']):
-#         print "MOSTLY FAIL", exp_wait
-        
-#     pickle.dump({'chains' : chains, 
-#                  'exp' : d}, 
-#                 open(exp_results, 'w'))
-
 
 @follows(create_latents_srm)
 @follows(create_latents_clist)
@@ -803,6 +650,7 @@ def cvdata_organize(input_file, output_files, output_file_name_root):
     print "input_file=", input_file
     a = pickle.load(open(input_file, 'r'))
     for di, d in enumerate(a):
+        print d
         key = d[0]
         a = key.split('.')[1]
         data, meta = d[1]
@@ -2047,8 +1895,8 @@ if __name__ == "__main__":
                   create_latents_srm, 
                   create_latents_srm_clist_xsoma,
                   spark_run_experiments,
+                  get_samples, 
                   get_cvdata,
-                  get_samples,
                   samples_organize,
                   cvdata_organize,
                   cv_collate_predlinks_assign, 
@@ -2073,5 +1921,5 @@ if __name__ == "__main__":
                   #plot_clustered_somapos,
               #plot_cluster_vars, 
               #plot_cluster_aris, 
-              ], multiprocess=6) # , multiprocess=3)
+              ]) # SERIOUSLY NEVER EVER MULTIPROCESS THIS SHIT IT BREAKS IT ALL 
     

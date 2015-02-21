@@ -35,7 +35,6 @@ fab s.launch:20,1.68
 
 fab -R master s.push_aws_creds s.connect_master_data add_packages
 
-fab -P -R slaves s.push_aws_creds s.worker_disks add_packages
-
+fab -P -R slaves s.push_aws_creds s.worker_disks add_packag
 
 

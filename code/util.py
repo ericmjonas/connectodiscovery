@@ -6,6 +6,9 @@ from preprocess import *
 import pandas
 import sqlite3
 
+from matplotlib.collections import PatchCollection
+from matplotlib.patches import Circle
+
 # plot spatial distribution of each cell type
 # plot area vs cell body distance
 
@@ -33,3 +36,36 @@ def create_adj_mat(con, area_thold, cell_data):
  
     return area_mat, cell_data.index.values
             
+
+
+
+def draw_manual_color_bar(ax, eval_points, color_func, xoffset, yoffset, 
+                          xwidth, yscale, 
+                          border=True):
+    import matplotlib
+    from matplotlib.collections import PatchCollection
+
+    patches = []
+    colors = []
+
+    for ystart, yend in zip(eval_points[:-1], eval_points[1:]):
+        rect = matplotlib.patches.Rectangle((xoffset, ystart*yscale + yoffset), xwidth, yscale*(yend-ystart), 
+                                                edgecolor="none")
+        patches.append(rect)
+        colors.append(color_func((yend-ystart)/2.0 + ystart))
+    
+    
+    
+    p = PatchCollection(patches, edgecolor='none', color=colors)
+    
+    ax.add_collection(p)
+    
+    if border:
+        border_patch = matplotlib.patches.Rectangle((xoffset, yoffset), xwidth, 
+                                                    yscale * (np.max(eval_points) - np.min(eval_points)))
+        p = PatchCollection([border_patch], edgecolor='k', facecolor='none')
+        ax.add_collection(p)
+    
+
+
+
