@@ -1,7 +1,7 @@
 \documentclass{article}
 \usepackage[american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
-\usepackage{fixme}
+\usepackage[margin=true,inline=true,index=true, status=draft]{fixme}
 \usepackage{grffile}
 \usepackage{booktabs}
 \usepackage{hyperref}
@@ -19,6 +19,7 @@
 \renewcommand{\vec}[1]{\mathbf{#1}}
 
 %\renewcommand{\includegraphics}[2][]{\fbox{}}
+
 
 \addbibresource{connectomics motif.bib}
 \addbibresource{connectomics motif-relational models.bib}
@@ -61,6 +62,8 @@
   connectomics, enabling new approaches of automatically deriving
   anatomical insights from these emerging datasets.
 \end{abstract}
+
+\listoffixmes
 
 \section*{Introduction}
 Emerging connectomics techniques \autocite{Morgan2013,Zador2012}
@@ -136,13 +139,13 @@ connectomics data available today and in the future.
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics[width=183mm]{fig1b.ai}}
-  \caption{Deriving circuitry and types from connectomics data a. As
-    input we take the connectivity between cells (b), the distance
-    between them (c), the depth of the cell bodies (d), and the depth
-    profile of the synapses (e). f. Our algorithm discovers hidden
-    cell types in this connectivity data by assuming all cells of a
-    type share a distance-dependent connectivity profile, similar
+  \centerline{\includegraphics[width=110mm]{fig1b.ai}}
+  \caption{Deriving circuitry and cell types from connectomics data
+    a. As input we take the connectivity between cells (b), the
+    distance between them (c), the depth of the cell bodies (d), and
+    the depth profile of the synapses (e). f. Our algorithm discovers
+    hidden cell types in this connectivity data by assuming all cells
+    of a type share a distance-dependent connectivity profile, similar
     depth, and a similar synaptic density profile, with cells of other
     types.  This results in a clustering of the cells by those hidden
     types. f.) shows the cell connectivity matrix with cells of the
@@ -152,10 +155,14 @@ connectomics data available today and in the future.
     close. h. shows the probability of connection between two cell
     types that very rarely connect -- there's a background ``base''
     connection rate to account for errors in data, but the probability
-    is very low.  We can plot this these types (i) to show the
-    relationship and spatial connections, and how probable various
-    types are to connect to one another. j.) The connectivity between
-    our discovered types changes as a function of distance. }
+    is very low.  i.) shows that we also recover the expected
+    laminarity of types and the depth-specific synaptic
+    connectivity. j.) We then plot how the connectivity between these
+    types changes as a function of distance between the cell bodies to
+    better understand short-range and long-range connectivity
+    patterns. }
+
+
 \label{fig:overview}
 \end{figure}
 
@@ -244,7 +251,7 @@ Methods for mathematical details).
 \fxwarning{Do we talk about cross-validation early on? What about
   posterior uncertainty?}
 
-\subsection{Metrics}
+\subsection*{Metrics}
 To evaluate the quality of the model fit, we need to use information that quantifies aspects of the data for which we have ground truth information. We focus on two aspects of performance. First, if the model works well, then the probability that a pair of neurons is of the same type should be high if the neurons actually are of the same type. Second, the model should assign a high probability of connection between two cells if they have a connection in the underlying data. We term these two factors clustering accuracy and link prediction accuracy.
 
 To assess the accuracy of a clustering compared to that determined by
@@ -269,7 +276,7 @@ the area under the curve (AUC) for the resulting ROC curve. An AUC of 1.0 means 
 We will first establish that our algorithm works properly and try to understand its properties using simulated data. Subsequently we will analyze in detail a dataset on the retina. Lastly we will briefly discuss the analysis of data from the worm \textit{c.elegans} and from an ancient microprocessor.  
 
 
-\subsection{Validation with simulated data where ground truth is known}
+\subsection*{Validation with simulated data where ground truth is known}
 To validate our model, we performed a series of simulations to test if
 the model can accurately recover the true underlying network structure
 and cell type identity.  We thus simulate data for which we know the
@@ -288,7 +295,7 @@ Monte Carlo (see methods for details). Thus our model at least is promising to b
 
 
 
-\subsection{Model Mismatch}
+\subsection*{Model Mismatch}
 
 
 \fxwarning{Add xlabel, ylabel, make line width of axes a bit bigger, larger number font, 
@@ -317,30 +324,37 @@ quantifying degree of type agreement with known ground truth. }
 
 
 
-\subsection{Sensitivity to Edge Effects} 
+\subsection*{Sensitivity to Edge Effects} 
 
 \begin{figure}
   \centering 
-  % generated from experiments/edgeeffects/edgeeffects.ipynb
   \centerline{\includegraphics[width=3.5in]{edgeeffects.pdf}}
-  \caption{edge effects}
-\label{fig:synthetic}
+  \caption{We generate two sets of synethetic data, one with
+    spatially-dependent connectivity and one without. We measure the
+    variance in the connectivity-distance plot for randomly selected
+    regions of each dataset, ranging from single-cells to the entire
+    volume. We see that while selecting too small of a region can 
+    destroy the appearance of distance-dependent connectivity, 
+    it does not create it in non-spatial data}
+\label{fig:edgeeffects}
 \end{figure}
 
-\fxwarning{cut down on the number of ticks, this will be a small figure, homogenize fonts} 
-
-
 Connectomic efforts so far have reconstructed only small sections of
-tissue at a time. Consequently, many connections to cells outside that
-tissue volume will be lost. We are concerned that this selective
-elimination of connectivity along the boundary might give the
-appearance of distance-dependent connectivity when there is none. We
-thus performed simulations to check if edge effects could destroy
-spatial structure and if edge effects could introduce artificial,
-spurious spatial structure. We measure the degree to which the model
-infers distance dependent connectivity for two synthetic datasets --
-one with distance-dependence and one without. We find that, if there
-is no distance-dependence, edge effects do not artificially introduce
+tissue. Consequently, many connections to cells outside that tissue
+volume will be lost. We are concerned that this selective elimination
+of connectivity along the boundary might give the appearance of
+distance-dependent connectivity when there is none. We thus performed
+simulations to check if edge effects could destroy spatial structure
+and if edge effects could introduce artificial, spurious spatial
+structure. We measure the degree to which distance-dependent effects
+can arise from selecting regions that are smaller than the ``scale''
+of connectivity (fig ~\ref{fig:edgeeffects}). We do this by generating
+two collections of synthetic datasets -- one with distance-dependent
+connectivity and one without.  We then in each dataset randomly
+examine contiguous circular regions with area varying from zero to the
+entire volume, and empirically calculate the spatial variance in
+type-dependent connectivity.  We find that, if there is no
+distance-dependence, edge effects do not artificially introduce
 distance dependence. However, if the section we are examining is too
 small, our model can miss the distance dependence. Thus with respect
 to distance-dependent connectivity inference, our model errs on the
@@ -373,19 +387,19 @@ quite limited.
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics{mouseretina.ai}}
-  \caption{Discovering cell classes in the mouse retina connectome.
+  \centerline{\includegraphics[width=160mm]{mouseretina2.ai}}
+  \caption{Discovering cell classes in the mouse retina connectome. Here
+we show the maxium a posteriori (MAP) estimate for the types in the mouse
+retina data. 
     a.) Input connectivity data for 950 cells for which soma positions
-    were known. b. clustered connectivity matrix. c.) connectivity
-    diagram showing our clusters, as well as the cell depth and
-    anatomist-labeled cell type of each cell. Our model shows moderate
-    agreement with the cell types traditionally identified by
-    anatomist laminar-specific connectivity patterns. 
+    were known. b. clustered connectivity matrix, each arbitrary color
+    corresponds to a single type, and will be used to identify that type in the remainder
+    of the plot. c.)  The spatial distribution of our cell types
+    -- each cell type tesselates space. Colors correspond to those in b.)
     d.) Connectivity between our clusters as a function
     of distance -- the cluster consisting primarily of retinal
-    ganglion cells (lower left-center) exhibits the expected near and
-    far connectivity. e.)  The spatial distribution of our cell types
-    -- each cell type tesselates space.}
+    ganglion cells (brown node on graph) exhibits the expected near and
+    far connectivity.}
 \label{fig:mouseretina}
 \end{figure}
 
@@ -471,13 +485,28 @@ prior belief of laminarity.
 \begin{figure}
   \centering 
   \centerline{\includegraphics{comparison.ai}}
-  \caption{\textbf{Visualizing type inference uncertainty.} Our fully Bayesian model gives a confidence estimate (posterior probability) that any two given cells are of the same type. In b.) we visualize that cell-cell coassignment matrix, showing the probability that cell i is of the same type as cell j on a range from 0.0 to 1.0. The block structure shows subsets of cells which are believed to all belong to the same type. For comparison, a.) shows the anatomist-defined type for each cell, grouped broadly into the coarse types identified in the previous figure. \textbf{Link vs cluster accuracy} c. A comparison of the
-    predictive accuracy (area under the curve) for hand-labeled
-    anatomical data, versus inclusion of additional sources of
-    information, as well as the clustering accuracy. Note that our model sacrifices very little predictive accuracy for additional clustering accuracy. By comparison, conventional methods fail at one or both.  d. ) The spatial extent (in depth and area) of the
-    types identified by humans and our various algorithmic
-    approaches.}
-
+  \caption{\textbf{Visualizing type inference uncertainty.} Our fully
+    Bayesian model gives a confidence estimate (posterior probability)
+    that any two given cells are of the same type. In a.) we visualize
+    that cell-cell coassignment matrix, showing the probability that
+    cell i is of the same type as cell j on a range from 0.0 to
+    1.0. The block structure shows subsets of cells which are believed
+    to all belong to the same type. For comparison, b.) shows the
+    anatomist-defined type for each cell, grouped broadly into the
+    coarse types identified in the previous figure. c.) for each cell
+    in the matrix, c.) shows the soma depth as well as the depth
+    histogram for all putative synaptic contacts. \textbf{Link vs
+      cluster accuracy} d.) The posterior distribution of ROC curves
+    from 10-fold cross validation when predicting connectivity, as
+    well as e.) the area under the curve and f.) the type agreements
+    with known neuroanatomist types. g. A comparison of the predictive
+    accuracy (area under the curve) for hand-labeled anatomical data,
+    versus inclusion of additional sources of information, as well as
+    the clustering accuracy. Note that our model sacrifices very
+    little predictive accuracy for additional clustering accuracy. By
+    comparison, conventional methods fail at one or both.  d. ) The
+    spatial extent (in depth and area) of the types identified by
+    humans and our various algorithmic approaches.}
 \label{fig:mouseretina_compare}
 \end{figure}
 
@@ -505,22 +534,24 @@ number of anterior ganglia. \textit{C. elegans} also differs from the retina in 
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics[width=4.7in]{celegans2.ai}}
+  \centerline{\includegraphics[width=7.0in]{celegans2.ai}}
   \caption{Discovering connectivity and type in
-    \textit{C. elegans}. Discovered types a.) The cell/cell
-    coassignment matrix identifies the posterior probability of any
-    two cells in \textit{c. elegans} being of the same type. The large
-    visible clusters roughly correspond to a more-coarse version of
-    types identified by neuroanatomists seen in b.) In particular,
-    robust subpopulations are found corresponding to divisions of
-    moter, interneuron, and sensory neurons. c.) The location of the
-    cell soma, revealing how spatial localizatinion correlates with
-    type. d.) The ROC curves for held-out link probability for both
-    the electrical synapses (gap junctions) and chemical synapses in
-    c. elegans. e.) The posterior distribution of the area under the
-    ROC curve for the curves in d. f.) Measurements of the
-    agreement of our identified cell types compared to neuroanatomists. 
-    See methods for an explanation of metrics. }
+    \textit{C. elegans}. a.) posterior distribution on cell
+    connectivity as a function of discovered type, similar to
+    figure~\ref{mouseretina}. In b.) we plot neuroanatomist-derived
+    types along with their labels. Our model shows high probability of
+    motor neurons, sensory neurons, and various interneuron classes
+    being of the same type. Soma positions along the body axis are
+    plotted in c.) where we see that we cluster spatially-distributed
+    motor neurons together, whereas head sensory neurons are more
+    likely to be grouped together as well.  d.) The ROC curves for
+    held-out link probability for both the electrical synapses (gap
+    junctions) and chemical synapses in c. elegans. e.) The posterior
+    distribution of the area under the ROC curve for the curves in
+    d. f.) Measurements of the agreement of our identified cell types
+    compared to neuroanatomists. The high compleneness but low
+    homogeneity (and corresponding low ARI) reflects our model's
+    tendency to group multiple types into a single type.}
   \label{fig:celegans}
 \end{figure}
 
@@ -528,11 +559,11 @@ number of anterior ganglia. \textit{C. elegans} also differs from the retina in 
 
 Using both the chemical and electrical connectivity (see methods), we
 determined the underlying cell types explained by connectivity and
-distance (fig~\ref{fig:celegans}a). A superficial inspection of the results shows
-clustering into groups consisting roughly homogeneously of motor
-neurons, sensory neurons, and interneurons. Closer examination reveals
-agreement with the classifications originally outlined by White in
-1986.  
+distance (fig~\ref{fig:celegans}a). A superficial inspection of the
+results shows clustering into groups consisting roughly homogeneously
+of motor neurons, sensory neurons, and interneurons. Closer
+examination reveals agreement with the classifications originally
+outlined by White in 1986.
 
 
 Note our clustering does not perfectly reflect known divisions --
@@ -543,8 +574,60 @@ reflect a ``coarsening'' of known types, based entirely on
 connectivity and distance information, even when the organism exhibits
 substantially less spatial regularity than the retina.
 
-\fxwarning{Add chip back in}
+\subsection*{Types and connectivity in artificial structures}
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=4in]{mos6502.ai}}
+  \caption{Discovering connectivity and type the 6502 microprocessor.
+    a.) is the micrograph of the original microprocessor, with the
+    region containing the registers under study highlighted. b.) Our
+    graph consists of the interconnections of MOS field-effect
+    transistors with three terminals, Gate, C1, and C2. Reconstruction
+    technique did not permit resolution of C1 and C2 into source and
+    drain. c.) The spatial distribution of the transistors in each
+    cluster show a clear pattern d.) The clusters and connectivity
+    versus distance for connections between Gate and C1, Gate and C2,
+    and C1 and C2 terminals on a transistor. Red and teal types have a
+    terminal pulled down to ground and mostly function as
+    inverters. Purple class are clocked, stateful transistors, orange
+    control the ALU and yellow control the special data bus (SDB).}
+  \label{fig:mos6502}
+\end{figure}
 
+
+To show the applicability of our method to other connectome-style
+datasets, we obtained the spatial location and interconnectivity of
+the transistors in a classic microprocessor, the MOS Technology 6502
+(used in the Apple II) \autocite{James2010}. Computer architects use
+common patterns of transistors when designing circuits, with each
+transistor having a ``type'' in the circuit. We identified a region of
+the processor with complex but known structure containing the primary
+8-bit registers X, Y, and S (fig~\ref{fig:mos6502}).
+
+Our algorithm identifies areas of spatial homogeneity that mirror the
+known structure in the underlying architectural circuit, segmenting
+transistor types recognizable to computer architects. Using the
+original schematics, we see that one identified type contains the
+``clocked'' transistors, which retain digital state. Two other types
+contain transistors with pins C1 or C2 connected to ground, mostly
+serving as inverters.  An additional identified type controls the
+behavior of the three registers of interest (X, Y, and S) with respect
+to the SB data bus, either allowing them to latch or drive data from
+the bus. The repeat patterns of spatial connectivity are visible in
+figure~\ref{fig:mos6502}c, showing the man-made horizontal and
+vertical layout of the same types of transistors.
+
+\subsection*{Microprocessor}
+We extracted the connection graph for the transistors in the MOS6502
+\autocite{visual6502source}. Each transistor has three terminals (gate,
+source, drain), but the methods of the original dataset were unable to
+consistently resolve which of the C1 and C2 terminals were source and
+drain, leading to ambiguity in our encoding. We identified a region
+consisting of three registers X, Y, and S via visual
+inspection and focused our efforts there. We created a total of six
+connectivity matrices by examining possible terminal pairings. One
+graph, for example, $R^{gc_1}(e_i, e_j)=1$ if transistor $e_j$ and
+$e_j$ are connected via pins $g$ and $c_1$. 
 
 \section*{Discussion}
 We have presented a machine learning technique that allows cell types
@@ -1010,7 +1093,7 @@ points between 10 and 500 and set $\lambda=\mu_{hp}/10$. $p_{min} \in
 1.0, 2.0\}$.
 
 \section*{Measuring clustering similarity}
-
+\fxwarning{Add an explanation of ARI, etc.} 
 The adjusted rand index (ARI) is a measure of the similarity of two
 different clusterings \autocite{Hubert1985} -- two identical clusters
 have an ARI of 1.0 while progressively more dissimilar clusters have
