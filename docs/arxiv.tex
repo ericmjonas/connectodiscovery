@@ -1,24 +1,19 @@
 \documentclass{article}
 \usepackage[american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
-\usepackage{todonotes}
+\usepackage[margin=true,inline=true,index=true]{fixme}
 \usepackage{grffile}
 \usepackage{booktabs}
 \usepackage{hyperref}
 \usepackage{graphicx}
 \usepackage{fullpage}
-%\usepackage{algorithm}
-%\usepackage{algorithmic}
 \usepackage{amsmath}
-%\usepackage{subcaption}
-%\usepackage{multicol}
 \usepackage{csquotes}
 \usepackage{pdfpages}
 \usepackage{placeins}
 
 \renewcommand{\vec}[1]{\mathbf{#1}}
 
-%\renewcommand{\includegraphics}[2][]{\fbox{}}
 
 \addbibresource{connectomics motif.bib}
 \addbibresource{connectomics motif-relational models.bib}
@@ -50,18 +45,18 @@
   understanding neural function. Here we developed a nonparametric
   Bayesian technique that identifies neuron types and microcircuitry
   patterns in connectomics data. It combines the information
-  traditionally used by biologists, including connectivity, cell body
-  location and the spatial distribution of synapses, in a
-  principled and probabilistically-coherent manner. We show that the
+  traditionally used by biologists in a principled and probabilistically-coherent manner, including  including connectivity, cell body
+  location and the spatial distribution of synapses. We show that the
   approach recovers known neuron types in the retina and enables
   predictions of connectivity, better than simpler algorithms. It also
   can reveal interesting structure in the nervous system of
-  C. elegans, and automatically discovers the structure of a
-  microprocessor.  Our approach extracts structural meaning from
+  C. elegans and a historic microprocessor.
+  Our approach extracts structural meaning from
   connectomics, enabling new approaches of automatically deriving
   anatomical insights from these emerging datasets.
 \end{abstract}
 
+\listoffixmes
 
 \section*{Introduction}
 Emerging connectomics techniques \autocite{Morgan2013,Zador2012}
@@ -70,24 +65,26 @@ within a tissue volume. These massive datasets will far exceed the
 capacity of neuroanatomists to manually trace small circuits, thus
 necessitating computational, quantitative, and automatic methods for
 understanding neural circuit structure.  The impact of this kind of
-high-throughput transition has been seen before -- rise of sequencing
+high-throughput transition has been seen before -- the rise of sequencing
 techniques necessitated the development of novel computational methods
-to understand genomic structure, ushering in  bioinformatics
-as an independent discipline \autocite{Koboldt2013}.
+to understand genomic structure, ushering in bioinformatics as an
+independent discipline \autocite{Koboldt2013}. 
 
 The brain consists of multiple kinds of neurons, each of which is
 hypothesized to have a specific role in the overall
 computation. Neuron types differ in many ways, e.g. chemical or
 morphological, but they also differ in the way they connect to one
-another. In fact, the idea of well defined, type-dependent local
-connectivity patterns (microcircuits) has been prominent in many
-areas, from sensory (e.g. retina, \autocite{Masland2001} to processing
+another \autocite{Seung2014}. In fact, the idea of well defined,
+type-dependent local connectivity patterns (microcircuits) has a long
+history \autocite{Passingham2002}, and is prominent in many areas,
+from sensory (e.g. retina, \autocite{Masland2001} to processing
 (e.g. neocortex \autocite{Mountcastle1997}) to movement (e.g. spinal
-cord) \autocite{Grillner2005}. These sorts of repeated computing
+cord) \autocite{Grillner2005}.  These sorts of repeated computing
 patterns are a common feature of computing systems, even arising in
 human-made computing circuits. It remains an important challenge to
-develop algorithms to use anatomical data, e.g. connectomics, to
-automatically back out underlying microcircuitry.
+develop algorithms to use connectivity-based anatomical data
+(connectomics), to automatically back out underlying microcircuitry.
+already begun, focusing on
 
 The discovery of structure is a crucial aspect of network
 science. Early approaches focused on global graph properties, such as
@@ -113,101 +110,77 @@ the variation in the nervous system should take into account the broad
 set of available features.
 
 When it comes to neuroscience and other computing systems, we expect
-patterns of connectivity much more complex than traditional motifs,
+patterns of connectivity much more complex than traditional motifs
 exhibiting a strong spatial dependence arising from the complex
 genetic, chemical, and activity-based neural development processes.
 
-To address these challenges, here we describe a Bayesian
-nonparametric model that can discover circuit structure automatically
-from connectomics data: the cell types, their spatial patterns of
+To address these challenges, here we describe a Bayesian non-parametric
+model that can discover circuit structure automatically from
+connectomics data: the cell types, their spatial patterns of
 interconnection, and the locations of somata and synapses. We show
 that by incorporating this additional information, our model both
-accurately predicts the connection as well as agrees
-with human neuroanatomists as to the identification of cell types.  
+accurately predicts the connection as well as agrees with human
+neuroanatomists as to the identification of cell types. We take as
+inspiration previous work on identifying cell types automatically from
+morphology \autocite{Guerra2011} and electrophysiology
+\autocite{Druckmann2013}. 
 
 We primarily focus on the recently-released mouse retina connectome
-\autocite{Helmstaedter2013}, but additionally examine the C. elegans
-connectome \autocite{White1986}, and then ``connectome'' of a
-classical microprocessor \autocite{James2010}. Comparing the cell
-types discovered by the algorithms with those obtained manually by
-human anatomists reveals a high degree of agreement. We thus present a
-scalable probabilistic approach to infer microcircuitry from
-connectomics data available today and in the future. 
+\autocite{Helmstaedter2013}, but additionally examine the \textit{C. elegans}
+connectome \autocite{White1986}.  Comparing the cell types discovered
+by the algorithms with those obtained manually by human anatomists
+reveals a high degree of agreement. We thus present a scalable
+probabilistic approach to infer microcircuitry from connectomics data
+available today and in the future.
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics[width=183mm]{fig1b.ai}}
-  \caption{Deriving circuitry and types from connectomics data a. As input we take the connectivity betwen cells (b), the distance between them (c), the depth of the cell bodies (d), and the depth profile of the syanpses (e). f. Our algorithm discovers hidden cell types in this
-    connectivity data by assuming all cells of a type share a
-    distance-dependent connectivity profile, similar depth, and a
-    similar synpatic density profile, with cells of other types.  This
-    results in a clustering of the cells by those hidden
+  \centerline{\includegraphics[width=110mm]{fig1b.ai}}
+  \caption{Deriving circuitry and cell types from connectomics data
+    a. As input we take the connectivity between cells (b), the
+    distance between them (c), the depth of the cell bodies (d), and
+    the depth profile of the synapses (e). f. Our algorithm discovers
+    hidden cell types in this connectivity data by assuming all cells
+    of a type share a distance-dependent connectivity profile, similar
+    depth, and a similar synaptic density profile, with cells of other
+    types.  This results in a clustering of the cells by those hidden
     types. f.) shows the cell connectivity matrix with cells of the
     same type grouped together. g.) shows the learned probability of
     connection between our different types at various distances -- in
     this case, the cells are likely to connect when they are
-    close. h. shows the probability of connection between two cell types
-that very rarely connect -- there's a background ``base'' connection rate
-to account for errors in data, but the probability is very low. 
-We can plot this these types (i) to show the relationship and spatial
-connections, and how probable various types are to connect to one
-another. j.) The connectivity between our discovered types changes as a
-function of distance. }
+    close. h. shows the probability of connection between two cell
+    types that very rarely connect -- there's a background ``base''
+    connection rate to account for errors in data, but the probability
+    is very low.  i.) shows that we also recover the expected
+    laminarity of types and the depth-specific synaptic
+    connectivity. j.) We then plot how the connectivity between these
+    types changes as a function of distance between the cell bodies to
+    better understand short-range and long-range connectivity
+    patterns. }
+
 
 \label{fig:overview}
 \end{figure}
 
-\section*{Results}
+\section*{Methods}
+
 
 We build a structured probabilistic model which begins with the
-generic notion of a cell being a member of a single, unobserved type
--- and these types affect soma depth, distribution of synapses, as
-well as a cell type and distance dependent connection probability. For
-example, retinal ganglion cells may synapse on nearby, but not far
-away, amacrine cells, with ganglion cells being superficial and having
-a broad distribution of synapses.  
-
-From these assumptions (priors) we develop a generative Bayesian model
-that estimates the underlying cell types and how they connect. We take
-as input (fig ~\ref{fig:overview}a) the connectivity matrix of cells (fig ~\ref{fig:overview}b) ,
-a matrix of the distance between cells (fig ~\ref{fig:overview}c), the per-cell soma depth
-(fig ~\ref{fig:overview}d) and the depth profile of the cell's
-synapses (fig ~\ref{fig:overview}e). We perform joint probabilistic
-inference to automatically learn the number of cell types, which cells
-belong to which type, their type-specific connectivity, and how
-connections between types vary with distance. We also simultaneously
-learn the soma depth associated with each type and the typical
-synaptic density profile (fig ~\ref{fig:overview}f-h.).
-
-We apply our algorithm to datasets from mouse
-retina, C. elegans and a historical microprocessor. Anatomists
-classify cells based on many features, giving us a meaningful baseline
-to compare against.
-
-We start with a model for connectivity, the infinite stochastic block
-model (iSBM)\autocite{Kemp2006a,Xu2006}, which has been shown to
-meaningfully cluster connection graphs while learning the number of
-hidden groups, or types. We extend this approach by adding distance
-dependence to model salient aspects of microcircuitry via logistic and
-exponential distance-link functions.  We additionally model cell body
-depth unimodally and synapse density profile multimodially (see
-Methods for mathematical details).
-
-To validate our model, we performed a series of simulations to test if
-the model can accurately recover the true underlying network structure
-and cell type identity.  We thus simulate data for which we know the
-correct structure and comparing the estimated structure based on the
-algorithm (see methods) with the one we used for simulation. We find
-that the model does a good job of recovering the correct number of
-cell types, (fig~\ref{fig:synthetic}a), the the cell identities
-(fig~\ref{fig:synthetic}b), and the spatial extent of each type
-(fig~\ref{fig:synthetic}c).  For comparison, existing infinite stochastic block model assumes cell type alone matters, and thus finds small neighborhoods of connected nodes (instead of global connectivity patterns). The model converges
-relatively quickly to an estimate of the most probable values for the
-cell types, which is enabled by using a combination of simulated
-annealing and parallelized Markov chain Monte Carlo (see methods for
-details). Thus we can apply our model to simulated datasets with structure
-and scale similar to that of our biological datasets and recover the known 
-correct structure. 
+generic notion of a cell being a member of a single type -- and these
+types affect soma depth, distribution of synapses, as well as a cell
+type and distance dependent connection probability. For example,
+retinal ganglion cells may synapse on nearby, but not far away,
+amacrine cells, with bipolar cells clearly tesselating space and
+synapsing on both. In machine learning parlance, our method is
+“unsupervised” -- it seeks to discover structure in data and make
+predictions in the absence of training data. Rather than taking in
+examples of types annotated by human neuroanatomists, we instead start
+with the weakest possible assumption in an attempt to algorithmically
+discover this structure. We contrast this with the supervised
+approaches taken in \autocite{Guerra2011}, where there is high
+confidence in the (morphologically-defined) types and then a
+supervised classifier is built, as our goal here is explicitly
+discovery of types.
 
 \begin{figure}
   \centering 
@@ -227,23 +200,260 @@ correct structure.
 \label{fig:synthetic}
 \end{figure}
 
+From these assumptions (priors) we develop a generative Bayesian model
+that estimates the underlying cell types and how they connect. We take
+as input (fig ~\ref{fig:overview}a) the connectivity matrix of cells
+(fig ~\ref{fig:overview}b) , a matrix of the distance between cells
+(fig ~\ref{fig:overview}c), the per-cell soma depth (fig
+~\ref{fig:overview}d) and the depth profile of the cell's synapses
+(fig ~\ref{fig:overview}e). We perform joint probabilistic inference
+to automatically learn the number of cell types, which cells belong to
+which type, their type-specific connectivity, and how connections
+between types vary with distance. We also simultaneously learn the
+soma depth associated with each type and the typical synaptic density
+profile (fig ~\ref{fig:overview}f-h.).
+
+We start with a model for connectivity, the infinite stochastic block
+model (iSBM)\autocite{Kemp2006a,Xu2006}, which has been shown to
+meaningfully cluster connection graphs while learning the number of
+hidden groups, or types. We extend this approach by adding distance
+dependence to model salient aspects of microcircuitry via logistic and
+exponential distance-link functions.  We form a unimodial model of cell
+body depth and a multimodal synapse density profile model (see
+Methods for mathematical details).
+
+As an illustrative example, consider a network with only three cell
+types, labeled A, B, and C. Assume these cells are uniformly
+distributed in space, and that the probability of connection between
+any two cells, $c_i$ and $c_j$, depends only on their type and their
+distance, according to a logistic (sigmoidal) function. Let A connect
+only to nearby B and C cells, but B connect to any C regardless of
+distance. This is the prior intuition our model is designed to capture. 
+
+
+For the basic link-distance model, we take as input a connectivity
+matrix $R$ defining the connections between cell $e_i$ and $e_j$, as
+well as a distance function $d(e_i, e_j)$ representing a (physical)
+distance between adjacent cells.  See
+the supplemental material for extension to multiple connectivity
+matrices. We assume there exist an unknown number $K$ of latent
+(unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
+cell $e_i$ belongs to a single cell type. We indicate a cell $e_i$ is
+of type $k$ using the assignment vector $\vec(c)$, so $c_i = k$. The
+observed connectivity between two cells $R(e_i, e_j)$ then depends
+only on their latent type and their distance through a link function
+$f(\cdot, d(e_i, e_j))$. We assume $f$ is parameterized based on the
+latent type, $c_i=m$ and $c_j=n$, via a parameter $\eta_{mn}$, as well
+as a set of global hyper parameters $\theta$, such that the link
+function is $f(d(e_i, e_j) | \eta_{mn}, \theta)$.
+
+We then jointly infer the posterior distribution of the
+class assignment vector $\vec(c) = \{c_i\}$, the parameter matrix
+$\eta_{mn}$, and the global model hyperparameters $\theta$ :
+
+\begin{equation}
+  p(\vec{c}, \eta, \theta | R ) \propto \prod_{i, j} p(R(e_i, e_j) | f(d(e_i, e_j) | \eta_{c_ic_j}), \theta) \prod_{m, n} p(\eta_{mn} | \theta)  p(\theta) p(\vec{c} | \alpha) p(\alpha) p(\theta)
+\end{equation}
+
+In our subsequent analysis makes use of both the full posterior
+distribution over these parameters as well as the most probable, or
+maximum \textit{a posteriori} (MAP), estimate.
+
+
+For the retina data, we then extend the model with the additional
+features indicated. Cell soma depth is modeled as a
+cell-type-dependent Gaussian distribution with latent (unknown)
+per-type mean and variance. Similarly, each cell has some number $N_i$
+of synapses, each of which is drawn from a cell-type-specific density
+profile with up to three modes.
+
+Inference is performed via Markov-chain Monte Carlo (MCMC) via three
+composable transition kernels -- one for structural, one for per-type
+parameters, and one kernel for global parameters and
+hyperparameters. Details of data preprocessing, inference parameters,
+and runtime can be found in the Supplementary Methods section.
+
+
+\subsection*{Metrics}
+To evaluate the quality of the model fit, we need to use information
+that quantifies aspects of the data for which we have ground truth
+information. We focus on two aspects of performance. First, if the
+model works well, then the probability that a pair of neurons is of
+the same type should be high if the neurons actually are of the same
+type. Second, the model should assign a high probability of connection
+between two cells if they have a connection in the underlying data. We
+term these two factors clustering accuracy and link prediction
+accuracy.
+
+To assess the accuracy of a clustering compared to that determined by
+neuroanatomists, we employ three metrics -- clustering homogeneity,
+clustering completness, and the adjusted Rand Index. All metrics equal
+1.0 when two clusterings completely agree. Homogeneity reflects the
+degree to which a found cluster or type contains only a single true
+type. Completeness measures how much of a true type is contained
+within a single identified type -- a completeness of 1.0 means no true
+type is split into multiple subtypes. ARI is a metric that reflects both measures (See
+supplemental for more information). 
+
+To assess the accuracy of the model for connections, we use link
+prediction accuracy. If our model accurately captures the true
+structure of the data, it should be good at predicting if a link
+exists.  We thus train the model on the data with a subset of the
+links marked as unobserved and thus compute our predictive
+accuracy. We perform 10-way cross validation on a given dataset \autocite{Guerra2011}, learn
+the resulting model, and use that model to predict the missing
+synapses. Each potential link between cells is assigned a probability,
+and we compute the area under the curve (AUC) for the resulting ROC
+curve. An AUC of 1.0 means that we perfectly predict the presence and
+absence of the missing synapses. We use link prediction accuracy to
+quantify how good the model is at discovering the underlying
+connectivity.  
+
+
+\section*{Results}
+We will first establish that our algorithm works properly and try to
+understand its properties using simulated data. Subsequently we will
+analyze in detail a dataset on the retina. Lastly we will briefly
+discuss the analysis of data from the worm \textit{c.elegans} and from
+an ancient microprocessor.
+
+
+\subsection*{Validation with simulated data where ground truth is known}
+To validate our model, we performed a series of simulations to test if
+the model can accurately recover the true underlying network structure
+and cell type identity.  We thus simulate data for which we know the
+correct structure and compare the estimated structure based on the
+algorithm (see methods) with the one we used for simulation. We find
+that the model does a good job of recovering the correct number of
+cell types, (fig~\ref{fig:synthetic}a), the the cell identities
+(fig~\ref{fig:synthetic}b), and the spatial extent of each type
+(fig~\ref{fig:synthetic}c).  For comparison, we show the results from
+instead using the infinite stochastic block model
+(fig~\ref{fig:synthetic}a, b, c, black line) which assumes that only
+cell type matters, and thus finds small neighborhoods of connected
+nodes (instead of global connectivity patterns). This contrast shows
+that while the regular block model can not correctly deal with
+distance dependent connectivity, our model can. Our model converges
+relatively quickly (see supplemental) to an estimate of the most
+probable values for the cell types, which is enabled by using a
+combination of simulated annealing and parallelized Markov chain Monte
+Carlo (see methods for details). Thus our model at least is promising
+to be applied to biological datasets.
+
+
+
+\subsection*{Model Mismatch}
+We next analyze how our model performs in cases where the data are
+generated with assumptions different from ours.  To understand the
+properties of our model, we attempt connectivity inference on four
+sets of synthetic data. This helps us understand what our model would
+do if the data does not obey our assumptions.
+
+We thus generate ten sets of synthetic data from each of four existing
+models.  The distance-dependent stochastic block model assumes type
+depends on distance, the traditional stochastic block model has no
+notion of distance, the mixed membership block model assumes type is
+combinatorial, and the latent position cluster model assumes that type
+is clustered-but-continuous.
+
+If the data is sampled from our model, inference according to our
+model, unsurprisingly, is good by all measures. It correctly estimates
+the number of cell types; it is good at predicting connectivity (high
+AUC); it agrees with human classification (Rand index); it discovers
+all types, and leads to homogeneous estimates
+(Fig. \ref{fig:othermodel} first row). If the data comes from a block
+model without distance dependence, we see that it still does well on
+all meaningful measures (Fig. \ref{fig:othermodel} second row). This
+is unsurprising, as our model learns the distance dependence, even its
+absence. For the mixed membership model (Fig. \ref{fig:othermodel}
+third row), the model grossly overestimates the number of types, by
+basically allocating a type for each combination of
+memberships. Otherwise it still performs relatively well. Lastly, for
+the latent position clustering model (Fig. \ref{fig:othermodel} fourth
+row), the model does poorly. If type is continuous instead of discrete
+then our model is basically trying to cover a continuous set with a
+discrete scenario leading to rather poor performance. However, as we
+do expect cell types to have a discrete biological basis we might
+expect our model to do well with real data.
+
+
+\begin{figure}
+  \centering 
+
+  \includegraphics[width=6.0in]{synthdifferent.ai}
+  \caption{Model inferences when true generating model differs from
+    our distance-block-model prior. Horizontal columns show results
+    with synthetic data generated according to the latent position
+    cluster model, the mixed membership block model, the non-distance
+    dependent stochastic block model, and the distance dependent
+    stochastic block model. In all cases histograms represent
+    posterior distribution over indicated metric. a.) The number of
+    types found by the model, vertical dash line indicates ``true''
+    type number (not applicable to mixed membership model). b.) The
+    area under the ROC curve, indicating link prediction accuracy. c,
+    d, e.) Clustering metrics quantifying degree of type agreement
+    with known ground truth. }
+
+  \label{fig:othermodel}
+\end{figure}
+
+
+
+\subsection*{Sensitivity to Edge Effects} 
+
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=3.5in]{edgeeffects.pdf}}
+  \caption{We generate two sets of synethetic data, one with
+    spatially-dependent connectivity and one without. We measure the
+    variance in the connectivity-distance plot for randomly selected
+    regions of each dataset, ranging from single-cells to the entire
+    volume. We see that while selecting too small of a region can 
+    destroy the appearance of distance-dependent connectivity, 
+    it does not create it in non-spatial data}
+\label{fig:edgeeffects}
+\end{figure}
+
+Connectomic efforts so far have reconstructed only small sections of
+neural tissue. Consequently, many connections to cells outside that tissue
+volume will be lost. We are concerned that this selective elimination
+of connectivity along the boundary might give the appearance of
+distance-dependent connectivity when there is none. We thus performed
+simulations to check if edge effects could destroy spatial structure
+and if edge effects could introduce artificial, spurious spatial
+structure. We measure the degree to which distance-dependent effects
+can arise from selecting regions that are smaller than the ``scale''
+of connectivity (fig ~\ref{fig:edgeeffects}). We do this by generating
+two collections of synthetic datasets -- one with distance-dependent
+connectivity and one without.  We then in each dataset randomly
+examine contiguous circular regions with area varying from zero to the
+entire volume, and empirically calculate the spatial variance in
+type-dependent connectivity.  We find that, if there is no
+distance-dependence, edge effects do not artificially introduce
+distance dependence. However, if the section we are examining is too
+small, our model can miss the distance dependence. Thus with respect
+to distance-dependent connectivity inference, our model errs on the
+side of caution. But we also find that for spatial extend that is
+similar to the currently available datasets the effects of this are
+quite limited.
+
 \subsubsection*{Learning types and circuitry in the retina}
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics{mouseretina.ai}}
-  \caption{Discovering cell classes in the mouse retina connectome.
+  \centerline{\includegraphics[width=160mm]{mouseretina2.ai}}
+  \caption{Discovering cell classes in the mouse retina connectome. Here
+we show the maximum a posteriori (MAP) estimate for the types in the mouse
+retina data. 
     a.) Input connectivity data for 950 cells for which soma positions
-    were known. b. clustered connectivity matrix. c.) connectivity
-    diagram showing our clusters, as well as the cell depth and
-    anatomist-labeled cell type of each cell. Our model shows moderate
-    agreement with the cell types traditionally identified by
-    anatomist laminar-specific connectivity patterns. 
+    were known. b. clustered connectivity matrix, each arbitrary color
+    corresponds to a single type, and will be used to identify that type in the remainder
+    of the plot. c.)  The spatial distribution of our cell types
+    -- each cell type tessellates space. Colors correspond to those in b.)
     d.) Connectivity between our clusters as a function
     of distance -- the cluster consisting primarily of retinal
-    ganglion cells (lower left-center) exhibits the expected near and
-    far connectivity. e.)  The spatial distribution of our cell types
-    -- each cell type tesselates space.}
+    ganglion cells (brown node on graph) exhibits the expected near and
+    far connectivity.}
 \label{fig:mouseretina}
 \end{figure}
 
@@ -258,7 +468,7 @@ produced a large dataset containing both the types of cells from
 orthogonal approaches, and also the connectivity matrix between all
 reconstructed cells.
 
-The algorithm took less than 2 hours to perform inference, dividing
+The algorithm took less than 4 hours to perform inference, dividing
 neurons into a set of cell types (fig~\ref{fig:mouseretina}c, each
 wedge is a type). For each pair of neurons there is a specific
 distance dependent connection probability
@@ -298,15 +508,25 @@ our model predict the link between them? And how closely does the
 spatial extent (within a layer) of our identified types agree with the
 known neuroanatomists.
 
-As a first measure we compare link prediction accuracy across the
-methods (Fig.\ref{fig:mouseretina_compare} B AUC, red).  We find that
+For our model we show the receiver opererating characteristic curve
+(ROC curve) (fig~\ref{fig:mouseretina_compare}d) whcih shows how the
+true and false positive rates trade off. We plot the posterior
+distribution of the area under this curve in
+figure~\ref{fig:mouseretina_compare}e. We then plot the 
+posterior distribution for cluster agreement metrics -- completeness,
+homogeneity, and ari (figure~\ref{fig:mouseretina_compare}f). We see
+that our model tends to over-cluster -- some of the finest-granularity of
+neuroanatomist types are grouped as a single type by our model. 
+
+We compare link prediction accuracy across the
+methods, including our own (Fig.\ref{fig:mouseretina_compare}g AUC, red).  We find that
 given the dataset many techniques allow for good link-predictive
 accuracy. All the methods allow decent link prediction with an AUC in
-the .9 range. However, our algorithm clearly outperforms the simple
+the 0.9 range. However, our algorithm clearly outperforms the simple
 statistical models that only use connectivity.
 
 As a second measure we compare link prediction accuracy across the
-methods (Fig.\ref{fig:mouseretina_compare} B ARI, blue). We find that our
+methods (Fig.\ref{fig:mouseretina_compare}g ARI, blue). We find that our
 algorithm far outperforms the controls. We also find that when it is
 based on more of the same information used by anatomists use then it
 gets better at agreeing with these anatomists. In particular, using
@@ -316,7 +536,7 @@ produces a good fit to human anatomist judgments.
 
 Finally we look at the spatial extent of the discovered types both
 within a layer and between layers (Fig.\ref{fig:mouseretina_compare}
-C). We see that, in the absence of distance information, mere
+h). We see that, in the absence of distance information, mere
 connectivity information results in types which only span a small
 region of space -- essentially “local cliques”. Incorporation of
 distance information results in types which span the entire extent of
@@ -329,13 +549,28 @@ prior belief of laminarity.
 \begin{figure}
   \centering 
   \centerline{\includegraphics{comparison.ai}}
-  \caption{\textbf{Visualizing type inference uncertainty.} Our fully Bayesian model gives a confidence estimate (posterior probability) that any two given cells are of the same type. In b.) we visualize that cell-cell coassignment matrix, showing the probability that cell i is of the same type as cell j on a range from 0.0 to 1.0. The block structure shows subsets of cells which are believed to all belong to the same type. For comparison, a.) shows the anatomist-defined type for each cell, grouped broadly into the coarse types identified in the previous figure. \textbf{Link vs cluster accuracy} c. A comparison of the
-    predictive accuracy (area under the curve) for hand-labeled
-    anatomical data, versus inclusion of additional sources of
-    information, as well as the clustering accuracy. Note that our model sacrifies very little predictive accuracy for additional clustering accuracy. By comparison, conventional methods fail at one or both.  d. ) The spatial extent (in depth and area) of the
-    types identified by humans and our various algorithmic
-    approaches.}
-
+  \caption{\textbf{Visualizing type inference uncertainty.} Our fully
+    Bayesian model gives a confidence estimate (posterior probability)
+    that any two given cells are of the same type. In a.) we visualize
+    that cell-cell coassignment matrix, showing the probability that
+    cell i is of the same type as cell j on a range from 0.0 to
+    1.0. The block structure shows subsets of cells which are believed
+    to all belong to the same type. For comparison, b.) shows the
+    anatomist-defined type for each cell, grouped broadly into the
+    coarse types identified in the previous figure. c.) for each cell
+    in the matrix, c.) shows the soma depth as well as the depth
+    histogram for all putative synaptic contacts. \textbf{Link vs
+      cluster accuracy} d.) The posterior distribution of ROC curves
+    from 10-fold cross validation when predicting connectivity, as
+    well as e.) the area under the curve and f.) the type agreements
+    with known neuroanatomist types. g. A comparison of the predictive
+    accuracy (area under the curve) for hand-labeled anatomical data,
+    versus inclusion of additional sources of information, as well as
+    the clustering accuracy. Note that our model sacrifices very
+    little predictive accuracy for additional clustering accuracy. By
+    comparison, conventional methods fail at one or both.  d. ) The
+    spatial extent (in depth and area) of the types identified by
+    humans and our various algorithmic approaches.}
 \label{fig:mouseretina_compare}
 \end{figure}
 
@@ -348,53 +583,57 @@ prior belief of laminarity.
 
 \subsection*{Recovering spatial connectivity in multiple graphs simultaneously}
 
-Having shown our model to work on the repeating tessellated, laminar structure of the mammilian retina, we then apply our model to a structurally very different connectome -- the whole body of a small roundworm: 
-\textit{Caenorhabditis elegans} is a model system in
+Having shown our model to work on the repeating tessellated, laminar
+structure of the mammalian retina, we then apply our model to a
+structurally very different connectome -- the whole body of a small
+roundworm: \textit{Caenorhabditis elegans} is a model system in
 developmental neuroscience\autocite{White1986}, with the location and
 connectivity of each of 302 neurons developmentally determined,
 leading to early measurement of the connectome. Unlike the retina,
 only the motor neurons in C. elegans exhibit regular distribution in
-space -- along the body axis. Most interneurons are
-concentrated in various ganglia that project throughout the entire
-animal, and the sensory neurons are primarily located in a small
-number of anterior ganglia. C. elegans also differs from the retina in that the measured connectome is actually two separate graphs -- one of directed chemical synapses and another of undirected electrical synapses. 
+space -- along the body axis. Most interneurons are concentrated in
+various ganglia that project throughout the entire animal, and the
+sensory neurons are primarily located in a small number of anterior
+ganglia. \textit{C. elegans} also differs from the retina in that the
+measured connectome is actually two separate graphs -- one of directed
+chemical synapses and another of undirected electrical synapses. As
+this is a very different connectome, it allows an interesting
+generalization test: how well will our model work on such a distinct
+data set.
 
 \begin{figure}
   \centering 
-  \centerline{\includegraphics[width=4.5in]{celegans.ai}}
-  \caption{Discovering connectivity and type in \textit{C. elegans}. 
- a.) Initial
-    \textit{C. elegans} cell connectivity matrix, red are
-    (directional) chemical synapses, blue are electrical
-    synapses. Point size is proportional to synapse count between
-    those cells. b.) Clustered adjacency matrix showing identified
-    clusters. c.) Inter-cluster connectivity, showing the position of
-    each cell along the body axis as well as the ``true'' cell type --
-    both coarse (motor, sensory, and interneuron) as well as fine
-    (small text labels). }
+  \centerline{\includegraphics[width=7.0in]{celegans2.ai}}
+  \caption{Discovering connectivity and type in
+    \textit{C. elegans}. a.) posterior distribution on cell
+    connectivity as a function of discovered type, similar to
+    figure~\ref{fig:mouseretina_compare}. In b.) we plot
+    neuroanatomist-derived types along with their labels. Our model
+    shows high probability of motor neurons, sensory neurons, and
+    various interneuron classes being of the same type. Soma positions
+    along the body axis are plotted in c.) where we see that we
+    cluster spatially-distributed motor neurons together, whereas head
+    sensory neurons are more likely to be grouped together as well.
+    d.) The ROC curves for held-out link probability for both the
+    electrical synapses (gap junctions) and chemical synapses in
+    c. elegans. e.) The posterior distribution of the area under the
+    ROC curve for the curves in d. f.) Measurements of the agreement
+    of our identified cell types compared to neuroanatomists. The high
+    compleneness but low homogeneity (and corresponding low ARI)
+    reflects our model's tendency to group multiple types into a
+    single type.}
   \label{fig:celegans}
 \end{figure}
 
 
 
 Using both the chemical and electrical connectivity (see methods), we
-determined the underlying clusters explained by connectivity and
-distance (fig~\ref{fig:celegans}a). A superficial inspection of the results shows
-clustering into groups consisting roughly homogeneously of motor
-neurons, sensory neurons, and interneurons. Closer examination reveals
-agreement with the classifications originally outlined by White in
-1986.  
-
-We identify cell types that reflect the known motor/non-motor neuron
-classes, even though this system lacks the strong repeat
-microcircuitry our model was designed for.  Motor-neuron types AS, DA,
-and VA, all exclusively postsynaptic, are identified as a common type,
-as are motor-neuron types VD and DD. Traditional types VC, DB, and VB
-also mostly share a cluster. Various head motor neurons, including
-types SMD and RMD, are clustered together. Interneurons with known
-anatomically-distinct connectivity patterns, such as AVA (2 cells),
-are clustered into pure types.The algorithm even correctly places the
-single-cell types DVB and DVC by themselves.
+determined the underlying cell types explained by connectivity and
+distance (fig~\ref{fig:celegans}a). A superficial inspection of the
+results shows clustering into groups consisting roughly homogeneously
+of motor neurons, sensory neurons, and interneurons. Closer
+examination reveals agreement with the classifications originally
+outlined by White in 1986.
 
 Note our clustering does not perfectly reflect known divisions --
 several combinations of head and sensory neurons are combined, and a
@@ -404,11 +643,10 @@ reflect a ``coarsening'' of known types, based entirely on
 connectivity and distance information, even when the organism exhibits
 substantially less spatial regularity than the retina.
 
-
 \subsection*{Types and connectivity in artificial structures}
 \begin{figure}
   \centering 
-  \centerline{\includegraphics[width=4in]{mos6502.ai}}
+  \centerline{\includegraphics[width=6in]{mos6502.ai}}
   \caption{Discovering connectivity and type the 6502 microprocessor.
     a.) is the micrograph of the original microprocessor, with the
     region containing the registers under study highlighted. b.) Our
@@ -418,10 +656,10 @@ substantially less spatial regularity than the retina.
     drain. c.) The spatial distribution of the transistors in each
     cluster show a clear pattern d.) The clusters and connectivity
     versus distance for connections between Gate and C1, Gate and C2,
-    and C1 and C2 terminals on a transistor. Red and teal types have a
+    and C1 and C2 terminals on a transistor. Purple and yellow types have a
     terminal pulled down to ground and mostly function as
-    inverters. Purple class are clocked, stateful transistors, orange
-    control the ALU and yellow control the special data bus (SDB).}
+    inverters. The blue types are clocked, stateful transistors, green
+    control the ALU and orange control the special data bus (SDB).}
   \label{fig:mos6502}
 \end{figure}
 
@@ -448,16 +686,18 @@ the bus. The repeat patterns of spatial connectivity are visible in
 figure~\ref{fig:mos6502}c, showing the man-made horizontal and
 vertical layout of the same types of transistors.
 
+
 \section*{Discussion}
 We have presented a machine learning technique that allows cell types
 and microcircuitry to be discovered from connectomics data.  We have
-shown its applicability to regularly structured laminar neural circuits like the retina, 
-as well as a less structured whole neuronal organism (\textit{C. elegans}) and an artificial processor. When compared to existing methods, we show how the
-incorporation of all of this data yields results that combine both
-high link-prediction accuracy and high agreement with human
-anatomists. We have found that combining the
-available data types allows us to discover cell types and
-microcircuitry that were known to exist in the systems based on
+shown its applicability to regularly structured laminar neural
+circuits like the retina, as well as a less structured whole neuronal
+organism (\textit{C. elegans}) and a classical processor. When
+compared to existing methods, we show how the incorporation of all of
+this data yields results that combine both high link-prediction
+accuracy and high agreement with human anatomists. We have found that
+combining the available data types allows us to discover cell types
+and microcircuitry that were known to exist in the systems based on
 decades of previous research and allows good prediction of
 connectivity.
 
@@ -476,7 +716,7 @@ data increases. Our algorithm required several hours for 1000
 neurons. Scaling this class of probabilistic model is an active area
 of research, and recent results in both variational methods
 \autocite{Hoffman2013} and spectral learning \autocite{Anandkumar2012}
-and future work could adapte them to find faster approximate solutions
+and future work could adapt them to find faster approximate solutions
 to our problem.
 
 Larger datasets will allow algorithms to distinguish more distinct
@@ -579,7 +819,7 @@ Inference is performed in three steps via composable transition
 kernels -- one for structural, one for per-type parameters, and
 one kernel for global parameters and hyperparameters. Details
 of data preprocessing, inference parameters, and runtime can
-be found in the Methods section. 
+be found in the Supplementary Methods section. 
 
 \printbibliography
 
@@ -594,7 +834,7 @@ should be addressed to E.J.~(email: jonas@eecs.berkeley.edu).
 \end{itemize}
 
 \newpage
-\section*{Methods }
+\section*{Supplementary Methods }
 
 \subsection*{Probabilistic Model}
 
@@ -825,6 +1065,7 @@ graph and the electrical network as undirected graph. We use the
 synapse counts with the logistic-distance poisson likelihood, scaling
 the counts by 4.0 to compensate for the Poisson's overdispersion.
 
+
 \subsection*{Microprocessor}
 We extracted the connection graph for the transistors in the MOS6502
 \autocite{visual6502source}. Each transistor has three terminals (gate,
@@ -922,15 +1163,45 @@ points between 10 and 500 and set $\lambda=\mu_{hp}/10$. $p_{min} \in
 1.0, 2.0\}$.
 
 \section*{Measuring clustering similarity}
+We compare discovered types to known types via cluster comparison
+metrics: cluster homogeneity, cluster completeness, and the adjusted
+Rand index. Homogeneity measures how many true types are in a given
+found type. If every cell type is split into two types, each subtype
+is still completely homogeneous. Completeness measures how many
+members of a given true type are split across found types.
 
-The adjusted rand index (ARI) is a measure of the similarity of two
-different clusterings \autocite{Hubert1985} -- two identical clusters
-have an ARI of 1.0 while progressively more dissimilar clusters have
-lower ARIs, becoming negative as the clustering gets anti-correlated.
+The adjusted rand index (ARI) takes into account both effects
+\autocite{Hubert1985} -- two identical clusterings have an ARI of 1.0
+while progressively more dissimilar clusters have lower ARIs, becoming
+slightly negative as the clustering gets anti-correlated.
+
+Figure~\ref{fig:s:comparison} shows the result of taking 20 different clusters
+and moving data points between them according to the following operations
+\begin{itemize}
+\item \textbf{distribute}: take a class and distribute its elements
+  uniformly among the remaining types.
+\item \textbf{merge} : take a type and merge it into another existing
+  type
+\item \textbf{split} : take a type and split it into two distinct
+  types.
+\end{itemize}
+
+We can see the impact on ARI, completeness, and homogeneity as we
+perform these operations on more of the original 20 types. In all
+cases, ``distribution'' of one type among the others is detremental to
+the metric. Splitting impacts completeness but not homogeneity, and
+merging impacts homogeneity but not completness.
+
+
+
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=180mm]{cluster_metric_comparison.pdf}}
+  \caption{Type agreement evaluation metrics as a function of splitting types, merging types, and randomly distributing cells between types}
+  \label{fig:s:comparison}
+\end{figure}
 
 \end{document}
-
-
 
 
 

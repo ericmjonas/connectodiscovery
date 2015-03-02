@@ -1,7 +1,7 @@
 \documentclass{article}
 \usepackage[american]{babel}
 \usepackage[backend=biber,style=nature]{biblatex}
-\usepackage[margin=true,inline=true,index=true, status=draft]{fixme}
+\usepackage[margin=true,inline=true,index=true]{fixme}
 \usepackage{grffile}
 \usepackage{booktabs}
 \usepackage{hyperref}
@@ -75,16 +75,16 @@ hypothesized to have a specific role in the overall
 computation. Neuron types differ in many ways, e.g. chemical or
 morphological, but they also differ in the way they connect to one
 another \autocite{Seung2014}. In fact, the idea of well defined,
-type-dependent local connectivity patterns (microcircuits) has been
-prominent in many areas, from sensory (e.g. retina,
-\autocite{Masland2001} to processing (e.g. neocortex
-\autocite{Mountcastle1997}) to movement (e.g. spinal cord)
-\autocite{Grillner2005}. These sorts of repeated computing patterns
-are a common feature of computing systems, even arising in human-made
-computing circuits. It remains an important challenge to develop
-algorithms to use connectivity-based anatomical data (connectomics), to
-automatically back out underlying microcircuitry.  already begun,
-focusing on
+type-dependent local connectivity patterns (microcircuits) has a long
+history \autocite{Passingham2002}, and is prominent in many areas,
+from sensory (e.g. retina, \autocite{Masland2001} to processing
+(e.g. neocortex \autocite{Mountcastle1997}) to movement (e.g. spinal
+cord) \autocite{Grillner2005}.  These sorts of repeated computing
+patterns are a common feature of computing systems, even arising in
+human-made computing circuits. It remains an important challenge to
+develop algorithms to use connectivity-based anatomical data
+(connectomics), to automatically back out underlying microcircuitry.
+already begun, focusing on
 
 The discovery of structure is a crucial aspect of network
 science. Early approaches focused on global graph properties, such as
@@ -111,9 +111,8 @@ set of available features.
 
 When it comes to neuroscience and other computing systems, we expect
 patterns of connectivity much more complex than traditional motifs
-\fxwarning{Add citation of Science “motifs” paper}, exhibiting a
-strong spatial dependence arising from the complex genetic, chemical,
-and activity-based neural development processes.
+exhibiting a strong spatial dependence arising from the complex
+genetic, chemical, and activity-based neural development processes.
 
 To address these challenges, here we describe a Bayesian non-parametric
 model that can discover circuit structure automatically from
@@ -167,12 +166,21 @@ available today and in the future.
 
 
 We build a structured probabilistic model which begins with the
-generic notion of a cell being a member of a single type
--- and these types affect soma depth, distribution of synapses, as
-well as a cell type and distance dependent connection probability. For
-example, retinal ganglion cells may synapse on nearby, but not far
-away, amacrine cells, with bipolar cells clearly tesselating space and
-synapsing on both. 
+generic notion of a cell being a member of a single type -- and these
+types affect soma depth, distribution of synapses, as well as a cell
+type and distance dependent connection probability. For example,
+retinal ganglion cells may synapse on nearby, but not far away,
+amacrine cells, with bipolar cells clearly tesselating space and
+synapsing on both. In machine learning parlance, our method is
+“unsupervised” -- it seeks to discover structure in data and make
+predictions in the absence of training data. Rather than taking in
+examples of types annotated by human neuroanatomists, we instead start
+with the weakest possible assumption in an attempt to algorithmically
+discover this structure. We contrast this with the supervised
+approaches taken in \autocite{Guerra2011}, where there is high
+confidence in the (morphologically-defined) types and then a
+supervised classifier is built, as our goal here is explicitly
+discovery of types.
 
 \begin{figure}
   \centering 
@@ -249,7 +257,7 @@ $\eta_{mn}$, and the global model hyperparameters $\theta$ :
 
 In our subsequent analysis makes use of both the full posterior
 distribution over these parameters as well as the most probable, or
-maximum \textit{a posteriori (MAP), estimate.
+maximum \textit{a posteriori} (MAP), estimate.
 
 
 For the retina data, we then extend the model with the additional
@@ -368,12 +376,23 @@ discrete scenario leading to rather poor performance. However, as we
 do expect cell types to have a discrete biological basis we might
 expect our model to do well with real data.
 
+
 \begin{figure}
   \centering 
 
   \includegraphics[width=6.0in]{synthdifferent.ai}
-  \caption{Model inferences when true generating model differs from our distance-block-model prior. Horizontal columns show results with synthetic data generated according to the latent position cluster model, the mixed membership block model, the non-distance dependent stochastic block model, and the distance dependent stochastic block model. In all cases histograms represent posterior distribution over indicated metric. a.) The number of types found by the model, vertical dash line indicates ``true'' type number (not applicable to mixed membership model). b.) The area under the ROC curve, indicating link prediction accuracy. c, d, e.) Clustering metrics
-quantifying degree of type agreement with known ground truth. }
+  \caption{Model inferences when true generating model differs from
+    our distance-block-model prior. Horizontal columns show results
+    with synthetic data generated according to the latent position
+    cluster model, the mixed membership block model, the non-distance
+    dependent stochastic block model, and the distance dependent
+    stochastic block model. In all cases histograms represent
+    posterior distribution over indicated metric. a.) The number of
+    types found by the model, vertical dash line indicates ``true''
+    type number (not applicable to mixed membership model). b.) The
+    area under the ROC curve, indicating link prediction accuracy. c,
+    d, e.) Clustering metrics quantifying degree of type agreement
+    with known ground truth. }
 
   \label{fig:othermodel}
 \end{figure}
