@@ -310,6 +310,409 @@ quantify how good the model is at discovering the underlying
 connectivity.  
 
 
+\subsection*{Methods Summary}
+
+For the basic link-distance model, we take as input a connectivity
+matrix $R$ defining the connections between cell $e_i$ and $e_j$, as
+well as a distance function $d(e_i, e_j)$ representing a (physical)
+distance between adjacent cells.  See
+the supplemental material for extension to multiple connectivity
+matrices. We assume there exist an unknown number $K$ of latent
+(unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
+cell $e_i$ belongs to a single cell type. We indicate a cell $e_i$ is
+of type $k$ using the assignment vector $\vec(c)$, so $c_i = k$. The
+observed connectivity between two cells $R(e_i, e_j)$ then depends
+only on their latent type and their distance through a link function
+$f(\cdot, d(e_i, e_j))$. We assume $f$ is parameterized based on the
+latent type, $c_i=m$ and $c_j=n$, via a parameter$\eta_{mn}$, as well
+as a set of global hyper parameters $\theta$, such that the link
+function is $f(d(e_i, e_j) | \eta_{mn}, \theta)$.
+
+We then jointly infer the maximum a posteriori (MAP) estimate of the
+class assignment vector $\vec(c) = \{c_i\}$, the parameter matrix
+$\eta_{mn}$, and the global model hyperparameters $\theta$ :
+
+\begin{equation}
+  p(\vec{c}, \eta, \theta | R ) \propto \prod_{i, j} p(R(e_i, e_j) | f(d(e_i, e_j) | \eta_{c_ic_j}), \theta) \prod_{m, n} p(\eta_{mn} | \theta)  p(\theta) p(\vec{c} | \alpha) p(\alpha) p(\theta)
+\end{equation}
+
+For the retina data, we then extend the model with the additional
+features indicated. Cell soma depth is modeled as a
+cell-type-dependent Gaussian with latent (unknown) per-type mean and
+variance. Similarly, each cell has some number $N_i$ of synapses, 
+each of which is drawn from a cell-type-specific density profile
+with up to three modes.
+
+
+Inference is performed in three steps via composable transition 
+kernels -- one for structural, one for per-type parameters, and
+one kernel for global parameters and hyperparameters. Details
+of data preprocessing, inference parameters, and runtime can
+be found in the Supplementary Methods section. 
+
+
+\subsection*{Probabilistic Model}
+
+Our model is a extension of the iSBM
+\autocite{Kemp2006a,Xu2006} to incorporate spatial relations between entities,
+inspired by attempts to extend these models with arbitrary
+discriminative functions\autocite{Murphy2012}.
+
+We take as input a connectivity matrix $R$ defining the connections
+between cell $e_i$ and $e_j$, as well as a distance function $d(e_i,
+e_j)$ representing a (physical) distance between adjacent cells. See
+the supplemental material for extension to multiple connectivity
+matrices. We assume there exist an unknown number $K$ of latent
+(unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
+cell $e_i$ belongs to a single cell type. We indicate a cell $e_i$ is
+of type $k$ using the assignment vector $\vec(c)$, so $c_i = k$. The
+observed connectivity between two cells $R(e_i, e_j)$ then depends
+only on their latent type and their distance through a link function
+$f(\cdot, d(e_i, e_j))$. We assume $f$ is parameterized based on the
+latent type, $c_i=m$ and $c_j=n$, via a parameter$\eta_{mn}$, as well
+as a set of global hyper parameters $\theta$, such that the link
+function is $f(d(e_i, e_j) | \eta_{mn}, \theta)$. 
+
+
+We then jointly infer the maximum a posteriori (MAP) estimate of the
+class assignment vector $\vec(c) = \{c_i\}$, the parameter matrix $\eta_{mn}$, and
+the global model hyperparameters $\theta$ :
+
+\begin{equation}
+  p(\vec{c}, \eta, \theta | R ) \propto \prod_{i, j} p(R(e_i, e_j) | f(d(e_i, e_j) | \eta_{c_ic_j}), \theta) \prod_{m, n} p(\eta_{mn} | \theta)  p(\theta) p(\vec{c} | \alpha) p(\alpha) p(\theta)
+\end{equation}
+
+
+% Methods section 3000 words
+% methods summary does not appear in the online text
+% methods section can have no figures or tables [grrr]
+
+
+
+We describe the spatial ``Logistic-distance Bernoulli''  function here,
+and others in the supplemental material. 
+
+% fixme class component, NOT class
+The ``logistic-distance Bernoulli'' spatial model assumes that, if cell
+$e_i$ is of type $m$ and cell $e_j$ is of type $n$, then $\eta_{mn}
+= (\mu_{mn}, \lambda_{mn})$, and the probability that two cells $e_i$
+and $e_j$ are connected is given by
+\begin{eqnarray}
+p^* &=& \frac{1.0}{1 + \exp \frac{d(e_i, e_j) - \mu_{mn}}{\lambda_{mn}}}\\
+p &= & p^* \cdot (p_{max} - p_{min}) + p_{min}
+\end{eqnarray}
+where $p_{max}$ and $p_{min}$ are global per-graph parameters. 
+
+We place an exponential priors on the latent parameters:
+\begin{eqnarray}
+ \mu_{mn} \sim \exp(\mu | \mu^{hp}) \\
+\lambda_{mn} \sim \exp(\lambda | \lambda^{hp})
+\end{eqnarray}
+
+using  $\lambda^{hp}$ and $\mu^{hp}$ as global per-graph hyperparameters. 
+
+We use a Dirichlet-process prior on class assignments, which allows
+the number of classs to be determined automatically. In brief, for $N$
+total cells, the probability of a cell belonging to a class is
+proportional to the number of datapoints already in that class, $N_k$,
+such that $p(c_i = k) \propto \frac{m_k}{N + \alpha}$ and the
+probability of the cell belonging to a new class $k'$ is $p(c_i = k')
+\propto \frac{\alpha}{N + \alpha}$. $\alpha$ is the global
+concentration parameter -- larger values of $\alpha$ make the model
+more likely to propose new classes. We grid the parameter $\alpha$ and
+allow the best value to be learned from the data.
+
+
+Where we model cell depth, we assume that 
+each cell type has a typical depth, and thus a Gaussian distribution
+of $s_i$. We assume $s_i \sim N(\mu^{(s)}_k,
+\sigma^{2(s)}_k)$, where the $(s)$ superscript indicates
+these model parameters are associated with the soma-depth 
+portion of our model.  We use a conjugate prior for $(\mu^{(s)}_k, \sigma^{2(s)}_k)$ with
+$\mu^{(s)}_k \sim N(\mu^{(s)}_{hp}, \sigma^{2(s)}_k/ \kappa^{(s)}_{hp})$ and $\sigma^{2(s)}_k \sim
+\chi^{-1}(\sigma^{2(s)}_{hp}, \nu^{(s)}_{hp}$. The use of conjugacy simplifies inference while allowing for each cell-type to have its own depth mean and distribution. 
+
+Where we model synapse depth profile, we assume that each cell
+type has a characteristic depth distribution of synaptic contact points, and thus
+a mixture of Gaussians distribution over cell $i$’s $N_i$ contact points, $\vec{g^i}$.
+We do this by assuming the $g^i_j$
+are drawn from an $M=3$-component mixture of Gaussians. Thus associated with each cell type $k$ is a vector
+of $M$ Gaussian means $(\mu^g_{k,1}, \cdots, \mu^g_{k, M})$, and a
+mixture vector $\pi_k$.  This representation can thus model depth distributions of contact points that have up to three modes, an assumption that is well matched in the bulk of anatomical studies of cell-type dependent connectivity.
+
+
+\subsection*{Inference} 
+We perform posterior inference via Markov-chain Monte Carlo (MCMC),
+annealing on the global likelihood during the traditional burn-in
+phase. MCMC transition kernels for different parts of the state space
+can be chained together to construct a kernel whose ergodic
+distribution is the target ergodic distribution over the entire state space. 
+
+Our first transition kernel (``structural'') performs gibbs sampling 
+of the assignment vector $p(\vec{c} | \eta, \theta, \alpha)$. 
+The lack of conjugacy in our likelihood model makes an explicit 
+evaluation of the conditional assignment probabilities impossible, 
+motivating us to use an auxiliary variable method \autocite{Neal2000}
+in which a collection of ephemeral classs are explicitly represented
+for the duration of the Gibbs scan. 
+
+We then employ a transition kernel to update the per-component
+parameter values $\eta_{mn}$. Conditioned on the assignment vector
+$\vec{c}$ and the model hyperparameters $\theta, \alpha$ the 
+individual $\eta_{mn}$ are independent. We slice sample \autocite{Neal2003}
+each component's parameters, choosing the slice width as a function
+of the global hyperparameter range. 
+
+The global hyper-parameters, both $\alpha$ and $\theta$, are allowed
+to take on a discrete set of possible values. As $\theta$ is often a
+tuple of possible values, we explore the cartesian product of all
+possible values. We then Gibbs sample (our final transition kernel),
+which is always possible in a small, finite, discrete state space.
+
+We chain these three kernels together, and then globally anneal on the
+likelihood from a temperature of $T=64$ down to $T=1$ over $900$
+iterations unless otherwise indicated, and then run the chain for
+another $100$ iterations. We then generate at least $20$ samples, each
+taken from the end of a single Markov chain initialized from different
+random initial points in the state space. For visualization we pick the
+chain with the highest log likelihood, but for all numerical
+comparisons (including link probability and cluster accuracy) we use this full
+collection of samples from the posterior distribution to estimate the
+resulting statistics.
+
+\subsection*{Link Prediction}
+To compute link-prediction accuracy we compute the probability of a
+link between two cells using each model, trained via 10-fold cross
+validation.  We use a full collection of posterior samples when computing
+the link probability, and then compute the area under the ROC curve
+for each.
+
+
+We compare our model with a standard network clustering model, the
+latent-position clustering model. This model assumes each cell belongs
+to one of K clusters, and each cluster is associated with a
+$d-$dimensional Gaussian distribution. The probability of a link is
+then a function of the distance between the data points in this
+continuous-space. We use \autocite{Salter-Townshend2013} a variational
+implementation provided in R, parametrically varying the number of
+latent dimensions and the number of requested groups.  While this
+model provides reasonable link predictive accuracy, the clusterings
+dramatically disagree with those from human anatomists.
+
+
+\subsection*{Parameters}
+
+Hierarchical generative models can be sensitive to hyperparameter
+settings, thus for most hyperparamters we perform inference. In cases
+where we cannot we run separate collections of markov chains at
+separate settings and show the results across all pooled
+parameters. For the case of the mouse retina data, we consisder
+maximum link probability $p_{max} \in \{0.95, 0.9, 0.7\}$, variance
+scales for the synapse density profile of $\sigma^2 \in \{0.01, 0.1,
+1.0\}$ (of normalized depth), and $K \in \{2, 3\}$ possible synapse
+density profile mixture components. For the connectivity-distance-only
+model we actually perform inference over both $p_{max}$ and $p_{min}$.
+
+
+\subsubsection*{Mixing of our Markov chains} 
+Evaluating whether or not approximate inference methods, such as MCMC,
+produce samples which are valid approximations of the posterior
+distribution is an ongoing area of research in the computational
+statistics community. We use a rough proxy here -- synthetic
+likelihood evaluation.  For synthetic datasets of sizes comparable to
+our real data size, do we recover known ground truth information after
+running our markov chains for the appropriate amount of time?
+
+Figures \ref{fig:mixing:ari} and \ref{fig:mixing:scorevstime} shows
+the cluster accuracy (ARI) to ground truth and the total log score as a function of
+runtime.  We see dramatic changes in log score initially as we vary
+the temperature, stabilizing as runtime progresses, for each
+chain. Then we see the characteristic jumps between nearby modes
+towards the end of the run, in both log score and ARI.  Importantly,
+regardless of whether our model over- or under-estimates the exact
+posterior variance about the network, we find points in the latent
+variable space that are both predictive \textit{and} parsimonious,
+largely agreeing with the human anatomists and predicting existing
+connections.
+
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=60mm]{mixing.ari.pdf}}
+  \caption{Adjusted rand index for synthetic data as a function of run iteration. }
+\label{fig:mixing:ari}
+\end{figure}
+
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=130mm]{mixing.scorevstime.pdf}}
+  \caption{Total model score (log score) vs iteration}
+\label{fig:mixing:scorevstime}
+\end{figure}
+
+\subsection*{Dataset details}
+\subsubsection* {Mouse Retina}
+\label{supp:mouseretina}
+Dense serial electron microscopy of a $114\mu m \times 80 \mu m $ area
+in the mouse retina by \autocite{Helmstaedter2013} yielded a listing
+of places where neurons come into contact. There were over 1000 cells
+originally, and selected the $950$ for which the location of the soma
+could be reconstructed from the provided cell plots (soma locations
+were not provided by the study's authors in machine-readable
+form). Ultimately this left a matrix between the total synapse-like
+contact area between all pairs of 950 cells. Area was thresholded at
+$0.1\mu m$, determined by hand, to yield a 950 $\times$ 950 entry
+matrix that served as input to our algorithm. We measured the distance
+between cells using the reconstructed soma centers, and used the
+Logistic-Distance spatial relation. Hyperprior griddings are shown in
+supplemental section \ref{supp:hyperpriors}.
+
+\subsubsection*{C. elegans}
+
+We obtained the connectome of c. elegans from data published
+previously \autocite{Varshney2011}, and isolated the 279 nonpharyngeal
+neurons, with a total of 6393 chemical synapses and 890 gap junctions
+originally cleaned up in \autocite{Chen2006}. A cell's position was
+its distance along the anterior-posterior axis normalized between zero
+and one. We used both networks, the chemical network as a directed
+graph and the electrical network as undirected graph. We use the
+synapse counts with the logistic-distance poisson likelihood, scaling
+the counts by 4.0 to compensate for the Poisson's overdispersion.
+
+
+\subsubsection*{Microprocessor}
+We extracted the connection graph for the transistors in the MOS6502
+\autocite{visual6502source}. Each transistor has three terminals (gate,
+source, drain), but the methods of the original dataset were unable to
+consistently resolve which of the C1 and C2 terminals were source and
+drain, leading to ambiguity in our encoding. We identified a region
+consisting of three registers X, Y, and S via visual
+inspection and focused our efforts there. We created a total of six
+connectivity matrices by examining possible terminal pairings. One
+graph, for example, $R^{gc_1}(e_i, e_j)=1$ if transistor $e_j$ and
+$e_j$ are connected via pins $g$ and $c_1$. 
+
+
+% \begin{addendum}
+%  \item Put acknowledgements here.
+%  \item[Competing Interests] The authors declare that they have no
+% competing financial interests.
+%  \item[Correspondence] Correspondence and requests for materials
+% should be addressed to A.B.C.~(email: myaddress@nowhere.edu).
+% \end{addendum}
+
+\subsection*{Other Likelihoods}
+\label{supp:otherlikelihoods}
+
+We reparameterized the Logistic-Distance Bernoulli likelihood to
+better capture the microprocessor data structure. We are explicitly
+setting the maximum probability $p$ of the logistic function on a
+per-component basis, drawing from a global $p \sim \operatorname{Beta}(\alpha_{hp},
+\beta_{hp})$. Then $\lambda$ is set for each component as a global
+hyperparameter, $\lambda$.
+
+The ``logstic-distance Poisson'' spatial model is used to explicitly
+mode the count of synapses, $c$, between two neurons. The probability
+of c synapses between two neurons is distributed $c \sim
+\textrm{Poisson}(c | r)$, where $r$ (the ``rate'') is generated by a
+scaled logistic function (the logistic function has range $[0,
+1]$. For each component $\eta_{mn}$ we learn both the threshold
+$\mu_{mn}$ and the rate scaling factor $r_{mn}$ Thus if for cells $m$
+and $n$ are likely to have on average $20$ synases if they are closer
+than $5 \mu m$, then $\mu_{mn} = 5$ and $r_{mn} = 20$ "
+
+Thus the probability of $R(e_i, e_j) = c$ synapses between two cells $e_i$ and $e_j$ is given by:
+\begin{eqnarray}
+r^* &=& \frac{1.0}{1 + \exp \frac{d(e_i, e_j) - \mu_{mn}}{\lambda}}\\
+r & = & r^* \cdot (r_{mn} - r_{min}) + r_{min} \\
+R(e_i, e_j) \sim \textrm{Poisson}(c | r)
+\end{eqnarray}
+
+where $\lambda$ and $r_{min}$ are per-graph parameters. Per-component parameters $\mu_{mn} \sim \exp(\mu | \mu^{hp})$ and $r_{mn} \sim \exp(r_{mn} | r_{scale}^{hp})$. 
+
+\subsection*{Source code and data}
+
+All source code and materials for running experiments can be
+obtained from the project website, at \\
+
+\href{http://https://github.com/ericmjonas/netmotifs}{https://github.com/ericmjonas/netmotifs/}
+
+and the content of this paper along with scripts to run
+experiments and generate all figures can be found at
+
+\href{http://https://github.com/ericmjonas/netmotifs}{https://github.com/ericmjonas/connect-disco-paper/}
+
+All preprocessed data has been made publicaly available as well. 
+
+Please contact the author for pre-publication access. 
+
+\subsection*{Extension to multiple graphs}
+\label{supp:multigraph}
+The model can handle multiple graphs $R^q$ simultaneously with a shared clustering by extending the likelihood to include the product of the likelihoods of the individual graphs. 
+
+\begin{equation}
+  p(\vec{c}, \{\eta^q\}, \{\theta^q\} | \{R^q\} ) \propto \prod_q \Bigg(\prod_{i, j} p(R^q(e_i, e_j) | f(d(e_i, e_j) | \eta^q_{c_ic_j}, \theta^q) \prod_{m, n} p(\eta^q_{mn} | \theta^q)  p(\theta^q) \Bigg) p(\vec{c} | \alpha) p(\alpha) 
+\end{equation}
+
+\FloatBarrier
+\subsection*{Hyperprior grids and hyperprior inference}
+\label{supp:hyperpriors}
+
+For the mouse retina Logistic-Distance Bernoulli model, we gridded
+$\mu^{hp}$ and $\lambda^{hp}$ into 40 $\log_{10}$-spaced points 1.0
+and 80. 
+
+For the c. elegans data with the Logistic Distance poisson model, we
+gridded $\mu_{hp}$ and $\lambda$ into 20 $\log_{10}$-spaced points
+bween 0.2 and 2.0, and the $ratescale^{hp}$ parameter into 20
+$\log_{10}$-spaced points between 2.0 and 20.0. We globally set
+$rate_{min}=0.01$.
+
+For the microprocessor with the Logistic Distance fixed lambda
+Bernoulli likelihood, we gridded $mu_{hp}$ into 50 $\log_{10}$-spaced
+points between 10 and 500 and set $\lambda=\mu_{hp}/10$. $p_{min} \in
+\{0.001, 0.01, 0.02\}$ and both $p_\alpha$ and $p_\beta \in \{0.1,
+1.0, 2.0\}$.
+
+\subsection*{Measuring clustering similarity}
+We compare discovered types to known types via cluster comparison
+metrics: cluster homogeneity, cluster completeness, and the adjusted
+Rand index. Homogeneity measures how many true types are in a given
+found type. If every cell type is split into two types, each subtype
+is still completely homogeneous. Completeness measures how many
+members of a given true type are split across found types.
+
+The adjusted rand index (ARI) takes into account both effects
+\autocite{Hubert1985} -- two identical clusterings have an ARI of 1.0
+while progressively more dissimilar clusters have lower ARIs, becoming
+slightly negative as the clustering gets anti-correlated.
+
+Figure~\ref{fig:s:comparison} shows the result of taking 20 different clusters
+and moving data points between them according to the following operations
+\begin{itemize}
+\item \textbf{distribute}: take a class and distribute its elements
+  uniformly among the remaining types.
+\item \textbf{merge} : take a type and merge it into another existing
+  type
+\item \textbf{split} : take a type and split it into two distinct
+  types.
+\end{itemize}
+
+We can see the impact on ARI, completeness, and homogeneity as we
+perform these operations on more of the original 20 types. In all
+cases, ``distribution'' of one type among the others is detremental to
+the metric. Splitting impacts completeness but not homogeneity, and
+merging impacts homogeneity but not completness.
+
+
+
+\begin{figure}
+  \centering 
+  \centerline{\includegraphics[width=180mm]{cluster_metric_comparison.pdf}}
+  \caption{Type agreement evaluation metrics as a function of splitting types, merging types, and randomly distributing cells between types}
+  \label{fig:s:comparison}
+\end{figure}
+
+
 \section*{Results}
 We will first establish that our algorithm works properly and try to
 understand its properties using simulated data. Subsequently we will
@@ -781,47 +1184,9 @@ phylogenetics). Ultimately, computational approaches may help resolve the signif
 disagreements across human anatomists. 
 
 
-\subsection*{Methods Summary}
-
-For the basic link-distance model, we take as input a connectivity
-matrix $R$ defining the connections between cell $e_i$ and $e_j$, as
-well as a distance function $d(e_i, e_j)$ representing a (physical)
-distance between adjacent cells.  See
-the supplemental material for extension to multiple connectivity
-matrices. We assume there exist an unknown number $K$ of latent
-(unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
-cell $e_i$ belongs to a single cell type. We indicate a cell $e_i$ is
-of type $k$ using the assignment vector $\vec(c)$, so $c_i = k$. The
-observed connectivity between two cells $R(e_i, e_j)$ then depends
-only on their latent type and their distance through a link function
-$f(\cdot, d(e_i, e_j))$. We assume $f$ is parameterized based on the
-latent type, $c_i=m$ and $c_j=n$, via a parameter$\eta_{mn}$, as well
-as a set of global hyper parameters $\theta$, such that the link
-function is $f(d(e_i, e_j) | \eta_{mn}, \theta)$.
-
-We then jointly infer the maximum a posteriori (MAP) estimate of the
-class assignment vector $\vec(c) = \{c_i\}$, the parameter matrix
-$\eta_{mn}$, and the global model hyperparameters $\theta$ :
-
-\begin{equation}
-  p(\vec{c}, \eta, \theta | R ) \propto \prod_{i, j} p(R(e_i, e_j) | f(d(e_i, e_j) | \eta_{c_ic_j}), \theta) \prod_{m, n} p(\eta_{mn} | \theta)  p(\theta) p(\vec{c} | \alpha) p(\alpha) p(\theta)
-\end{equation}
-
-For the retina data, we then extend the model with the additional
-features indicated. Cell soma depth is modeled as a
-cell-type-dependent Gaussian with latent (unknown) per-type mean and
-variance. Similarly, each cell has some number $N_i$ of synapses, 
-each of which is drawn from a cell-type-specific density profile
-with up to three modes.
-
-
-Inference is performed in three steps via composable transition 
-kernels -- one for structural, one for per-type parameters, and
-one kernel for global parameters and hyperparameters. Details
-of data preprocessing, inference parameters, and runtime can
-be found in the Supplementary Methods section. 
 
 \printbibliography
+\newpage
 
 \begin{itemize}
 
@@ -833,373 +1198,6 @@ competing financial interests.
 should be addressed to E.J.~(email: jonas@eecs.berkeley.edu).
 \end{itemize}
 
-\newpage
-\section*{Supplementary Methods }
-
-\subsection*{Probabilistic Model}
-
-Our model is a extension of the iSBM
-\autocite{Kemp2006a,Xu2006} to incorporate spatial relations between entities,
-inspired by attempts to extend these models with arbitrary
-discriminative functions\autocite{Murphy2012}.
-
-We take as input a connectivity matrix $R$ defining the connections
-between cell $e_i$ and $e_j$, as well as a distance function $d(e_i,
-e_j)$ representing a (physical) distance between adjacent cells. See
-the supplemental material for extension to multiple connectivity
-matrices. We assume there exist an unknown number $K$ of latent
-(unobserved) cell types, $k \in \{1, 2, 3, \dots, K\}$, and that each
-cell $e_i$ belongs to a single cell type. We indicate a cell $e_i$ is
-of type $k$ using the assignment vector $\vec(c)$, so $c_i = k$. The
-observed connectivity between two cells $R(e_i, e_j)$ then depends
-only on their latent type and their distance through a link function
-$f(\cdot, d(e_i, e_j))$. We assume $f$ is parameterized based on the
-latent type, $c_i=m$ and $c_j=n$, via a parameter$\eta_{mn}$, as well
-as a set of global hyper parameters $\theta$, such that the link
-function is $f(d(e_i, e_j) | \eta_{mn}, \theta)$. 
-
-
-We then jointly infer the maximum a posteriori (MAP) estimate of the
-class assignment vector $\vec(c) = \{c_i\}$, the parameter matrix $\eta_{mn}$, and
-the global model hyperparameters $\theta$ :
-
-\begin{equation}
-  p(\vec{c}, \eta, \theta | R ) \propto \prod_{i, j} p(R(e_i, e_j) | f(d(e_i, e_j) | \eta_{c_ic_j}), \theta) \prod_{m, n} p(\eta_{mn} | \theta)  p(\theta) p(\vec{c} | \alpha) p(\alpha) p(\theta)
-\end{equation}
-
-
-% Methods section 3000 words
-% methods summary does not appear in the online text
-% methods section can have no figures or tables [grrr]
-
-
-
-We describe the spatial ``Logistic-distance Bernoulli''  function here,
-and others in the supplemental material. 
-
-% fixme class component, NOT class
-The ``logistic-distance Bernoulli'' spatial model assumes that, if cell
-$e_i$ is of type $m$ and cell $e_j$ is of type $n$, then $\eta_{mn}
-= (\mu_{mn}, \lambda_{mn})$, and the probability that two cells $e_i$
-and $e_j$ are connected is given by
-\begin{eqnarray}
-p^* &=& \frac{1.0}{1 + \exp \frac{d(e_i, e_j) - \mu_{mn}}{\lambda_{mn}}}\\
-p &= & p^* \cdot (p_{max} - p_{min}) + p_{min}
-\end{eqnarray}
-where $p_{max}$ and $p_{min}$ are global per-graph parameters. 
-
-We place an exponential priors on the latent parameters:
-\begin{eqnarray}
- \mu_{mn} \sim \exp(\mu | \mu^{hp}) \\
-\lambda_{mn} \sim \exp(\lambda | \lambda^{hp})
-\end{eqnarray}
-
-using  $\lambda^{hp}$ and $\mu^{hp}$ as global per-graph hyperparameters. 
-
-We use a Dirichlet-process prior on class assignments, which allows
-the number of classs to be determined automatically. In brief, for $N$
-total cells, the probability of a cell belonging to a class is
-proportional to the number of datapoints already in that class, $N_k$,
-such that $p(c_i = k) \propto \frac{m_k}{N + \alpha}$ and the
-probability of the cell belonging to a new class $k'$ is $p(c_i = k')
-\propto \frac{\alpha}{N + \alpha}$. $\alpha$ is the global
-concentration parameter -- larger values of $\alpha$ make the model
-more likely to propose new classes. We grid the parameter $\alpha$ and
-allow the best value to be learned from the data.
-
-
-Where we model cell depth, we assume that 
-each cell type has a typical depth, and thus a Gaussian distribution
-of $s_i$. We assume $s_i \sim N(\mu^{(s)}_k,
-\sigma^{2(s)}_k)$, where the $(s)$ superscript indicates
-these model parameters are associated with the soma-depth 
-portion of our model.  We use a conjugate prior for $(\mu^{(s)}_k, \sigma^{2(s)}_k)$ with
-$\mu^{(s)}_k \sim N(\mu^{(s)}_{hp}, \sigma^{2(s)}_k/ \kappa^{(s)}_{hp})$ and $\sigma^{2(s)}_k \sim
-\chi^{-1}(\sigma^{2(s)}_{hp}, \nu^{(s)}_{hp}$. The use of conjugacy simplifies inference while allowing for each cell-type to have its own depth mean and distribution. 
-
-Where we model synapse depth profile, we assume that each cell
-type has a characteristic depth distribution of synaptic contact points, and thus
-a mixture of Gaussians distribution over cell $i$’s $N_i$ contact points, $\vec{g^i}$.
-We do this by assuming the $g^i_j$
-are drawn from an $M=3$-component mixture of Gaussians. Thus associated with each cell type $k$ is a vector
-of $M$ Gaussian means $(\mu^g_{k,1}, \cdots, \mu^g_{k, M})$, and a
-mixture vector $\pi_k$.  This representation can thus model depth distributions of contact points that have up to three modes, an assumption that is well matched in the bulk of anatomical studies of cell-type dependent connectivity.
-
-
-\subsection*{Inference} 
-We perform posterior inference via Markov-chain Monte Carlo (MCMC),
-annealing on the global likelihood during the traditional burn-in
-phase. MCMC transition kernels for different parts of the state space
-can be chained together to construct a kernel whose ergodic
-distribution is the target ergodic distribution over the entire state space. 
-
-Our first transition kernel (``structural'') performs gibbs sampling 
-of the assignment vector $p(\vec{c} | \eta, \theta, \alpha)$. 
-The lack of conjugacy in our likelihood model makes an explicit 
-evaluation of the conditional assignment probabilities impossible, 
-motivating us to use an auxiliary variable method \autocite{Neal2000}
-in which a collection of ephemeral classs are explicitly represented
-for the duration of the Gibbs scan. 
-
-We then employ a transition kernel to update the per-component
-parameter values $\eta_{mn}$. Conditioned on the assignment vector
-$\vec{c}$ and the model hyperparameters $\theta, \alpha$ the 
-individual $\eta_{mn}$ are independent. We slice sample \autocite{Neal2003}
-each component's parameters, choosing the slice width as a function
-of the global hyperparameter range. 
-
-The global hyper-parameters, both $\alpha$ and $\theta$, are allowed
-to take on a discrete set of possible values. As $\theta$ is often a
-tuple of possible values, we explore the cartesian product of all
-possible values. We then Gibbs sample (our final transition kernel),
-which is always possible in a small, finite, discrete state space.
-
-We chain these three kernels together, and then globally anneal on the
-likelihood from a temperature of $T=64$ down to $T=1$ over $900$
-iterations unless otherwise indicated, and then run the chain for
-another $100$ iterations. We then generate at least $20$ samples, each
-taken from the end of a single Markov chain initialized from different
-random initial points in the state space. For visualization we pick the
-chain with the highest log likelihood, but for all numerical
-comparisons (including link probability and cluster accuracy) we use this full
-collection of samples from the posterior distribution to estimate the
-resulting statistics.
-
-\subsection*{Link Prediction}
-As a proxy for link-prediction accuracy we compute the probability of a link
-between two cells using each model, trained fully on the data. While this method
-is potentially prone to overfitting, the overfitting will be shared across models
-and in fact will preferentially bias in favor of competing models
-which over-cluster the data. We use a full collection of posterior samples when
-computing the link probability, and then compute the area under the ROC curve for
-each. 
-
-\subsection*{Model Comparison}
-We compare our model with a standard network clustering model, the
-latent-position clustering model. This model assumes each cell belongs
-to one of K clusters, and each cluster is associated with a
-$d-$dimensional Gaussian distribution. The probability of a link is
-then a function of the distance between the data points in this
-continuous-space. We use \autocite{Salter-Townshend2013} a variational
-implementation provided in R, parametrically varying the number of
-latent dimensions and the number of requested groups.  While this
-model provides reasonable link predictive accuracy, the clusterings
-dramatically disagree with those from human anatomists.
-
-
-\subsection*{Parameters}
-
-Hierarchical generative models can be sensitive to hyperparameter
-settings, thus for most hyperparamters we perform inference. In cases
-where we cannot we run separate collections of markov chains at
-separate settings and show the results across all pooled
-parameters. For the case of the mouse retina data, we consisder
-maximum link probability $p_{max} \in \{0.95, 0.9, 0.7\}$, variance
-scales for the synapse density profile of $\sigma^2 \in \{0.01, 0.1,
-1.0\}$ (of normalized depth), and $K \in \{2, 3\}$ possible synapse
-density profile mixture components. For the connectivity-distance-only
-model we actually perform inference over both $p_{max}$ and $p_{min}$.
-
-
-\subsubsection*{Mixing of our Markov chains} 
-Evaluating whether or not approximate inference methods, such as MCMC,
-produce samples which are valid approximations of the posterior
-distribution is an ongoing area of research in the computational
-statistics community. We use a rough proxy here -- synthetic
-likelihood evaluation.  For synthetic datasets of sizes comparable to
-our real data size, do we recover known ground truth information after
-running our markov chains for the appropriate amount of time?
-
-Figures \ref{fig:mixing:ari} and \ref{fig:mixing:scorevstime} shows
-the cluster accuracy (ARI) to ground truth and the total log score as a function of
-runtime.  We see dramatic changes in log score initially as we vary
-the temperature, stabilizing as runtime progresses, for each
-chain. Then we see the characteristic jumps between nearby modes
-towards the end of the run, in both log score and ARI.  Importantly,
-regardless of whether our model over- or under-estimates the exact
-posterior variance about the network, we find points in the latent
-variable space that are both predictive \textit{and} parsimonious,
-largely agreeing with the human anatomists and predicting existing
-connections.
-
-\begin{figure}
-  \centering 
-  \centerline{\includegraphics[width=60mm]{mixing.ari.pdf}}
-  \caption{Adjusted rand index for synthetic data as a function of run iteration. }
-\label{fig:mixing:ari}
-\end{figure}
-
-\begin{figure}
-  \centering 
-  \centerline{\includegraphics[width=130mm]{mixing.scorevstime.pdf}}
-  \caption{Total model score (log score) vs iteration}
-\label{fig:mixing:scorevstime}
-\end{figure}
-
-
-\subsection* {Mouse Retina}
-\label{supp:mouseretina}
-Dense serial electron microscopy of a $114\mu m \times 80 \mu m $ area
-in the mouse retina by \autocite{Helmstaedter2013} yielded a listing
-of places where neurons come into contact. There were over 1000 cells
-originally, and selected the $950$ for which the location of the soma
-could be reconstructed from the provided cell plots (soma locations
-were not provided by the study's authors in machine-readable
-form). Ultimately this left a matrix between the total synapse-like
-contact area between all pairs of 950 cells. Area was thresholded at
-$0.1\mu m$, determined by hand, to yield a 950 $\times$ 950 entry
-matrix that served as input to our algorithm. We measured the distance
-between cells using the reconstructed soma centers, and used the
-Logistic-Distance spatial relation. Hyperprior griddings are shown in
-supplemental section \ref{supp:hyperpriors}.
-
-\subsection*{C. elegans}
-
-We obtained the connectome of c. elegans from data published
-previously \autocite{Varshney2011}, and isolated the 279 nonpharyngeal
-neurons, with a total of 6393 chemical synapses and 890 gap junctions
-originally cleaned up in \autocite{Chen2006}. A cell's position was
-its distance along the anterior-posterior axis normalized between zero
-and one. We used both networks, the chemical network as a directed
-graph and the electrical network as undirected graph. We use the
-synapse counts with the logistic-distance poisson likelihood, scaling
-the counts by 4.0 to compensate for the Poisson's overdispersion.
-
-
-\subsection*{Microprocessor}
-We extracted the connection graph for the transistors in the MOS6502
-\autocite{visual6502source}. Each transistor has three terminals (gate,
-source, drain), but the methods of the original dataset were unable to
-consistently resolve which of the C1 and C2 terminals were source and
-drain, leading to ambiguity in our encoding. We identified a region
-consisting of three registers X, Y, and S via visual
-inspection and focused our efforts there. We created a total of six
-connectivity matrices by examining possible terminal pairings. One
-graph, for example, $R^{gc_1}(e_i, e_j)=1$ if transistor $e_j$ and
-$e_j$ are connected via pins $g$ and $c_1$. 
-
-
-% \begin{addendum}
-%  \item Put acknowledgements here.
-%  \item[Competing Interests] The authors declare that they have no
-% competing financial interests.
-%  \item[Correspondence] Correspondence and requests for materials
-% should be addressed to A.B.C.~(email: myaddress@nowhere.edu).
-% \end{addendum}
-\newpage
-\section*{Supplemental Material}
-
-\subsection*{Other Likelihoods}
-\label{supp:otherlikelihoods}
-
-We reparameterized the Logistic-Distance Bernoulli likelihood to
-better capture the microprocessor data structure. We are explicitly
-setting the maximum probability $p$ of the logistic function on a
-per-component basis, drawing from a global $p \sim \operatorname{Beta}(\alpha_{hp},
-\beta_{hp})$. Then $\lambda$ is set for each component as a global
-hyperparameter, $\lambda$.
-
-The ``logstic-distance Poisson'' spatial model is used to explicitly
-mode the count of synapses, $c$, between two neurons. The probability
-of c synapses between two neurons is distributed $c \sim
-\textrm{Poisson}(c | r)$, where $r$ (the ``rate'') is generated by a
-scaled logistic function (the logistic function has range $[0,
-1]$. For each component $\eta_{mn}$ we learn both the threshold
-$\mu_{mn}$ and the rate scaling factor $r_{mn}$ Thus if for cells $m$
-and $n$ are likely to have on average $20$ synases if they are closer
-than $5 \mu m$, then $\mu_{mn} = 5$ and $r_{mn} = 20$ "
-
-Thus the probability of $R(e_i, e_j) = c$ synapses between two cells $e_i$ and $e_j$ is given by:
-\begin{eqnarray}
-r^* &=& \frac{1.0}{1 + \exp \frac{d(e_i, e_j) - \mu_{mn}}{\lambda}}\\
-r & = & r^* \cdot (r_{mn} - r_{min}) + r_{min} \\
-R(e_i, e_j) \sim \textrm{Poisson}(c | r)
-\end{eqnarray}
-
-where $\lambda$ and $r_{min}$ are per-graph parameters. Per-component parameters $\mu_{mn} \sim \exp(\mu | \mu^{hp})$ and $r_{mn} \sim \exp(r_{mn} | r_{scale}^{hp})$. 
-
-\subsection*{Source code and data}
-
-All source code and materials for running experiments can be
-obtained from the project website, at \\
-
-\href{http://https://github.com/ericmjonas/netmotifs}{https://github.com/ericmjonas/netmotifs/}
-
-and the content of this paper along with scripts to run
-experiments and generate all figures can be found at
-
-\href{http://https://github.com/ericmjonas/netmotifs}{https://github.com/ericmjonas/connect-disco-paper/}
-
-All preprocessed data has been made publicaly available as well. 
-
-Please contact the author for pre-publication access. 
-
-\subsection*{Extension to multiple graphs}
-\label{supp:multigraph}
-The model can handle multiple graphs $R^q$ simultaneously with a shared clustering by extending the likelihood to include the product of the likelihoods of the individual graphs. 
-
-\begin{equation}
-  p(\vec{c}, \{\eta^q\}, \{\theta^q\} | \{R^q\} ) \propto \prod_q \Bigg(\prod_{i, j} p(R^q(e_i, e_j) | f(d(e_i, e_j) | \eta^q_{c_ic_j}, \theta^q) \prod_{m, n} p(\eta^q_{mn} | \theta^q)  p(\theta^q) \Bigg) p(\vec{c} | \alpha) p(\alpha) 
-\end{equation}
-
-\FloatBarrier
-\subsection*{Hyperprior grids and hyperprior inference}
-\label{supp:hyperpriors}
-
-For the mouse retina Logistic-Distance Bernoulli model, we gridded
-$\mu^{hp}$ and $\lambda^{hp}$ into 40 $\log_{10}$-spaced points 1.0
-and 80. 
-
-For the c. elegans data with the Logistic Distance poisson model, we
-gridded $\mu_{hp}$ and $\lambda$ into 20 $\log_{10}$-spaced points
-bween 0.2 and 2.0, and the $ratescale^{hp}$ parameter into 20
-$\log_{10}$-spaced points between 2.0 and 20.0. We globally set
-$rate_{min}=0.01$.
-
-For the microprocessor with the Logistic Distance fixed lambda
-Bernoulli likelihood, we gridded $mu_{hp}$ into 50 $\log_{10}$-spaced
-points between 10 and 500 and set $\lambda=\mu_{hp}/10$. $p_{min} \in
-\{0.001, 0.01, 0.02\}$ and both $p_\alpha$ and $p_\beta \in \{0.1,
-1.0, 2.0\}$.
-
-\section*{Measuring clustering similarity}
-We compare discovered types to known types via cluster comparison
-metrics: cluster homogeneity, cluster completeness, and the adjusted
-Rand index. Homogeneity measures how many true types are in a given
-found type. If every cell type is split into two types, each subtype
-is still completely homogeneous. Completeness measures how many
-members of a given true type are split across found types.
-
-The adjusted rand index (ARI) takes into account both effects
-\autocite{Hubert1985} -- two identical clusterings have an ARI of 1.0
-while progressively more dissimilar clusters have lower ARIs, becoming
-slightly negative as the clustering gets anti-correlated.
-
-Figure~\ref{fig:s:comparison} shows the result of taking 20 different clusters
-and moving data points between them according to the following operations
-\begin{itemize}
-\item \textbf{distribute}: take a class and distribute its elements
-  uniformly among the remaining types.
-\item \textbf{merge} : take a type and merge it into another existing
-  type
-\item \textbf{split} : take a type and split it into two distinct
-  types.
-\end{itemize}
-
-We can see the impact on ARI, completeness, and homogeneity as we
-perform these operations on more of the original 20 types. In all
-cases, ``distribution'' of one type among the others is detremental to
-the metric. Splitting impacts completeness but not homogeneity, and
-merging impacts homogeneity but not completness.
-
-
-
-\begin{figure}
-  \centering 
-  \centerline{\includegraphics[width=180mm]{cluster_metric_comparison.pdf}}
-  \caption{Type agreement evaluation metrics as a function of splitting types, merging types, and randomly distributing cells between types}
-  \label{fig:s:comparison}
-\end{figure}
 
 \end{document}
 
