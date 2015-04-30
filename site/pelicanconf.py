@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 
 AUTHOR = u'Eric Jonas (jonas@eecs.berkeley.edu)'
 SITENAME = u'Automatic Discovery of Cell Types'
-SITEURL = ''
+SITEURL = 'http://ericmjonas.github.io/connectodiscovery'
 
 THEME = "/Users/jonas/projects/pelican/themes/gum"
 
@@ -36,4 +36,7 @@ SOCIAL = (('You can add links in your config file', '#'),
 DEFAULT_PAGINATION = False
 
 # Uncomment following line if you want document-relative URLs when developing
-#RELATIVE_URLS = True
+RELATIVE_URLS = True
+
+PLUGIN_PATHS = ["/Users/jonas/projects/pelican/"]
+PLUGINS = ["render_math"]
