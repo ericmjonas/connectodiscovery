@@ -48,8 +48,101 @@
     <h1>Model</h1>
     
 
-    <p>This is where we have the nice pedagogical example of our model with
-students and classes.</p>
+    <p>A stochastic block model is a statistical model for graphs that assumes
+connectivity only depends on the underlying <strong>type</strong> of the node. We
+are interested in making inferences about those node types
+based on the observed graph. For this paper we extended
+a nonparemetric type of block model to incorporate distance-dependence
+and additional feature metadata, and applied it to connectome reconstruction.</p>
+<p>What follows is a simple, and hopefully intuitive explanation of what the model
+finds in data. <a href="http://elifesciences.org/content/4/e04250/F1">For details, both neural and mathematical, see the paper</a> </p>
+<h3>Going to a conference</h3>
+<p>Imagine going to a conference and watching researchers attempt to talk
+to one another. We record when researcher <span class="math">\(e_i\)</span> <em>tries to talk to</em>
+researcher <span class="math">\(e_j\)</span>. Note that "tries to talk to" is not symmetric --
+I might try and talk to someone, but that doesn't mean they will
+talk to me (this happens all too often!). We end up
+with a directed graph of the data that looks like this</p>
+<p><img src="../images/modelexample/nodist.data.png"/></p>
+<p>What can we learn from this graph? Are there certain patterns of
+interaction, or certain types of researchers?</p>
+<p>When we fit a stochastic block model to this data, we are learning a
+hidden class or type, <span class="math">\(m_i\)</span>, for each node <span class="math">\(e_i\)</span>, with the prior
+belief that that type determines connectivity. When we sort the graph,
+a pattern emerges:</p>
+<p><img src="../images/modelexample/nodist.recovered.png"/></p>
+<p>Our model has found four types of people at this conference. 
+We can see postdocs, grad students, faculty, and vendors.</p>
+<p><img src="../images/modelexample/explanation.png"/></p>
+<h3>The importance of distance</h3>
+<p>Let's assume that the conference is massive, like the <a href="http://www.sfn.org/annual-meeting/past-and-future-annual-meetings/annual-meeting-attendance-statistics">annual Society For Neuroscience
+meeting</a> at ~30,000 people. With a conference this large,
+it may be the case that most people never even get near-enough to each
+other to try and talk.</p>
+<p>This time, we have some explicit distance-dependence in our data. That is, we know
+if <span class="math">\(e_i\)</span> tried to talk to <span class="math">\(e_j\)</span> and how far away <span class="math">\(e_i\)</span> and <span class="math">\(e_j\)</span> were. If we ignore this distance-dependence, we "overcluster": </p>
+<p><img src="../images/modelexample/dist.nodistrecover.png"/></p>
+<p>But when we explicitly incorporate distance, we see we recover the
+four, true groups.</p>
+<p><img src="../images/modelexample/dist.distrecover.png"/></p>
+<p>As datasets grow larger and more sparse, the importance of accomodating distance
+as well as other prior knowledge only grows. <a href="http://elifesciences.org/content/4/e04250">Read more in the paper!</a> </p>
+<h3></h3>
+<p>You can try this example yourself <a href="http://nbviewer.ipython.org/github/ericmjonas/connectodiscovery/blob/master/modelexample/conference.ipynb">via the jupyter notebook</a>. </p>
+<script type="text/javascript">if (!document.getElementById('mathjaxscript_pelican_#%@#$@#')) {
+    var align = "center",
+        indent = "0em",
+        linebreak = "false";
+
+    if (false) {
+        align = (screen.width < 768) ? "left" : align;
+        indent = (screen.width < 768) ? "0em" : indent;
+        linebreak = (screen.width < 768) ? 'true' : linebreak;
+    }
+    
+    var mathjaxscript = document.createElement('script');
+    mathjaxscript.id = 'mathjaxscript_pelican_#%@#$@#';
+    mathjaxscript.type = 'text/javascript';
+    mathjaxscript.src = '//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML';
+    mathjaxscript[(window.opera ? "innerHTML" : "text")] =
+        "MathJax.Hub.Config({" +
+        "    config: ['MMLorHTML.js']," +
+        "    TeX: { extensions: ['AMSmath.js','AMSsymbols.js','noErrors.js','noUndefined.js'], equationNumbers: { autoNumber: 'AMS' } }," +
+        "    jax: ['input/TeX','input/MathML','output/HTML-CSS']," +
+        "    extensions: ['tex2jax.js','mml2jax.js','MathMenu.js','MathZoom.js']," +
+        "    displayAlign: '"+ align +"'," +
+        "    displayIndent: '"+ indent +"'," +
+        "    showMathMenu: true," +
+        "    tex2jax: { " +
+        "        inlineMath: [ ['\\\\(','\\\\)'] ], " +
+        "        displayMath: [ ['$$','$$'] ]," +
+        "        processEscapes: true," +
+        "        preview: 'TeX'," +
+        "    }, " +
+        "    'HTML-CSS': { " +
+        "        styles: { '.MathJax_Display, .MathJax .mo, .MathJax .mi, .MathJax .mn': {color: 'inherit ! important'} }," +
+        "        linebreaks: { automatic: "+ linebreak +", width: '90% container' }," +
+        "    }, " +
+        "}); " +
+        "if ('default' !== 'default') {" +
+            "MathJax.Hub.Register.StartupHook('HTML-CSS Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax['HTML-CSS'].FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+            "MathJax.Hub.Register.StartupHook('SVG Jax Ready',function () {" +
+                "var VARIANT = MathJax.OutputJax.SVG.FONTDATA.VARIANT;" +
+                "VARIANT['normal'].fonts.unshift('MathJax_default');" +
+                "VARIANT['bold'].fonts.unshift('MathJax_default-bold');" +
+                "VARIANT['italic'].fonts.unshift('MathJax_default-italic');" +
+                "VARIANT['-tex-mathit'].fonts.unshift('MathJax_default-italic');" +
+            "});" +
+        "}";
+    (document.body || document.getElementsByTagName('head')[0]).appendChild(mathjaxscript);
+}
+</script>
 
        </div><!-- /.row -->
     </div><!-- /.container -->
